@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=Source+Code+Pro&display=swap');
+
+.stButton > button {
+    background-color: #4A90E2;
+    color: white;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    border: none;
+}
+
+.stButton > button:hover {
+    background-color: #357ABD;
+}
+
+.css-1d391kg {
+    font-family: 'IBM Plex Sans', sans-serif;
+}
+
+.stAlert {
+    background-color: #FF6B6B;
+    color: white;
+}
+
+.metric-card {
+    background-color: #F8F9FA;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #E9ECEF;
+}
+
+.shap-container {
+    background-color: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
