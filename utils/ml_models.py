@@ -1,3 +1,4 @@
+#utils/ml_models.py
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, mean_squared_error
@@ -40,8 +41,8 @@ class RegressionAnalyzer:
         fig = px.scatter(
             x=y_true,
             y=y_pred,
-            labels={'x': 'Actual Values', 'y': 'Predicted Values'},
-            title='Actual vs Predicted Values'
+            labels={'x': 'Valores reais', 'y': 'Valores preditos'},
+            title='Reais vs Predições'
         )
         
         # Add perfect prediction line

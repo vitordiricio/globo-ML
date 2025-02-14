@@ -1,4 +1,3 @@
-#main.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -8,8 +7,13 @@ from sklearn.metrics import r2_score, mean_squared_error
 import plotly.express as px
 import plotly.graph_objects as go
 from utils.model_evaluation import ModelEvaluator
-import xgboost as xgb
 
+# Try importing XGBoost
+try:
+    import xgboost as xgb
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
 
 # Initialize session state for storing models
 if 'models' not in st.session_state:
@@ -17,46 +21,34 @@ if 'models' not in st.session_state:
 
 # Page configuration
 st.set_page_config(
-    page_title="ML Globo",
+    page_title="ML Regression Analysis Tool",
     layout="wide",
-    initial_sidebar_state="expanded",
-    page_icon="./assets/globo-icone.png"
+    initial_sidebar_state="expanded"
 )
-
-
-col1, col2, col3 = st.columns([1, 2, 1])
-
-# Criar duas colunas com proporções diferentes - a primeira um pouco maior que a segunda
-logo1, logo2 = col1.columns([0.6, 4])  # Ajuste esses valores conforme necessário
-
-with logo1:
-    st.image("assets/globo-icone.png", width=80)
-    
-with logo2:
-    st.image("assets/fcamara-simple-logo.png", width=50)
-
 
 # Load custom CSS
 with open('styles/custom.css') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 # Header
-st.title("🔍 ML Globo")
+st.title("🔍 ML Regression Analysis Tool")
 st.markdown("""
-    Faça o upload da sua base de dados CSV para entender melhor seus dados.
+    Upload your CSV file and perform regression analysis with interactive visualizations.
+    This tool helps you understand your data and make predictions.
 """)
 
 # File upload
-uploaded_file = st.file_uploader("", type=['csv'])
+uploaded_file = st.file_uploader("Upload your CSV file", type=['csv'])
 
 if uploaded_file is not None:
     try:
         # Load data
         df = pd.read_csv(uploaded_file)
+        st.success("File uploaded successfully!")
 
         # Data preview
         st.subheader("Data Preview")
-        st.dataframe(df.head(), hide_index=True)
+        st.dataframe(df.head())
 
         # Column selection
         numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
@@ -64,23 +56,24 @@ if uploaded_file is not None:
         col1, col2 = st.columns(2)
         with col1:
             target_column = st.selectbox(
-                "Selecione a variável que quer entender (Y)",
+                "Select target variable (Y)",
                 options=numeric_columns,
-                help="A coluna que você quer entender melhor a partir de outras"
+                help="Choose the variable you want to predict"
             )
 
         with col2:
             available_features = [col for col in numeric_columns if col != target_column]
 
             # Add select all option
-            all_option = "Selecionar todas as colunas"
+            all_option = "Select All Features"
             options = [all_option] + available_features
 
             selected = st.multiselect(
-                "Selecione as métricas explicativas (X)",
+                "Select feature variables (X)",
                 options=options,
-                help="As métricas/colunas que você quer usar para tentar predizer e entender Y"
+                help="Choose the variables to use for prediction"
             )
+
             # Handle Select All option
             if all_option in selected:
                 feature_columns = available_features
@@ -101,27 +94,26 @@ if uploaded_file is not None:
             )
 
             # Model selection tabs
-            st.subheader("Modelos")
+            st.subheader("Model Analysis")
             tabs = st.tabs([
-                "Regressão Linear",
+                "Linear Regression",
                 "XGBoost",
+                "Model Comparison",
                 "CatBoost",
                 "LightGBM",
                 "Market Mix Modeling",
-                "Deep Learning (LSTM)",
-                "Model Comparison",
+                "Deep Learning (LSTM)"
             ])
 
             # Linear Regression Tab
             with tabs[0]:
                 st.markdown("""
-                    ### Regressão Linear
-                    A regressão linear é um modelo estatístico fundamental que assume uma relação linear entre as variáveis de entrada e saída.
-                    É útil para:
-
-                    - Compreender relações diretas entre variáveis
-                    - Fazer previsões simples e interpretáveis
-                    - Identificar a força do impacto das variáveis explicativas sobre a variável alvo
+                    ### Linear Regression
+                    Linear regression is a fundamental statistical model that assumes a linear relationship between inputs and outputs.
+                    It's useful for:
+                    - Understanding direct relationships between variables
+                    - Making simple, interpretable predictions
+                    - Identifying the strength of feature impacts on the target variable
                 """)
 
                 with st.spinner("Training Linear Regression model..."):
@@ -139,14 +131,14 @@ if uploaded_file is not None:
                     rmse = np.sqrt(mse)
 
                     # Display equation
-                    st.subheader("Equação do modelo")
+                    st.subheader("Model Equation")
                     equation = f"{target_column} = {lr_model.intercept_:.4f}"
                     for coef, feature in zip(lr_model.coef_, feature_columns):
                         equation += f" + ({coef:.4f} × {feature})"
                     st.code(equation)
 
                     # Display metrics
-                    st.subheader("Métricas de performance do modelo")
+                    st.subheader("Model Performance Metrics")
                     metric_cols = st.columns(3)
                     metrics = {
                         'R²': round(r2, 3),
@@ -154,15 +146,9 @@ if uploaded_file is not None:
                         'RMSE': round(rmse, 3)
                     }
 
-                    help_texts = {
-                        'R²': "O Coeficiente de Determinação (R²) mede a proporção da variância na variável dependente que é previsível a partir das variáveis independentes. Um valor mais próximo de 1 indica um modelo melhor.",
-                        'MSE': "O Erro Quadrático Médio (MSE) é a média dos quadrados dos erros, ou seja, a diferença média ao quadrado entre os valores previstos e os valores reais. Um valor menor indica um modelo melhor.",
-                        'RMSE': "A Raiz do Erro Quadrático Médio (RMSE) é a raiz quadrada do MSE. Ela representa, aproximadamente, a diferença média entre os valores previstos e os valores reais. Um valor menor indica um modelo melhor."
-                    }
-
                     for i, (metric, value) in enumerate(metrics.items()):
                         with metric_cols[i]:
-                            st.metric(metric, value, help=help_texts[metric])
+                            st.metric(metric, value)
 
                     # Visualization section
                     st.subheader("Visualizations")
@@ -175,13 +161,13 @@ if uploaded_file is not None:
                         title='Actual vs Predicted Values'
                     )
 
-                    # Add Previsoes line
+                    # Add perfect prediction line
                     fig.add_trace(
                         go.Scatter(
                             x=[y_test.min(), y_test.max()],
                             y=[y_test.min(), y_test.max()],
                             mode='lines',
-                            name='Previsoes',
+                            name='Perfect Prediction',
                             line=dict(color='#50E3C2', dash='dash')
                         )
                     )
@@ -215,104 +201,105 @@ if uploaded_file is not None:
             # XGBoost Tab
             with tabs[1]:
                 st.markdown("""
-                    ### Regressão XGBoost
-                    XGBoost (eXtreme Gradient Boosting) é uma implementação poderosa e eficiente de árvores de decisão com gradiente impulsionado.
-                    Principais vantagens:
-
-                    - Seleção automática de variáveis e classificação de importância
-                    - Lida com relacionamentos não lineares
-                    - Robusto a outliers e valores ausentes
-                    - Alta precisão nas previsões
+                    ### XGBoost Regression
+                    XGBoost (eXtreme Gradient Boosting) is a powerful and efficient implementation of gradient boosted trees.
+                    Key advantages:
+                    - Automatic feature selection and importance ranking
+                    - Handles non-linear relationships
+                    - Robust to outliers and missing values
+                    - High prediction accuracy
                 """)
 
-                with st.spinner("Training XGBoost model..."):
-                    # Train XGBoost model
-                    xgb_model = xgb.XGBRegressor(
-                        objective='reg:squarederror',
-                        n_estimators=100,
-                        learning_rate=0.1,
-                        random_state=42
-                    )
-                    xgb_model.fit(X_train, y_train)
-                    st.session_state.models['XGBoost'] = xgb_model
+                if not XGBOOST_AVAILABLE:
+                    st.warning("""
+                        XGBoost is not installed in this environment. 
+                        Please install it using: pip install xgboost
 
-                    # Make predictions
-                    y_pred = xgb_model.predict(X_test)
-
-                    # Calculate metrics
-                    r2 = r2_score(y_test, y_pred)
-                    mse = mean_squared_error(y_test, y_pred)
-                    rmse = np.sqrt(mse)
-
-                    # Display metrics
-                    st.subheader("Métricas de performance do modelo")
-                    metric_cols = st.columns(3)
-                    metrics = {
-                        'R²': round(r2, 3),
-                        'MSE': round(mse, 3),
-                        'RMSE': round(rmse, 3)
-                    }
-
-                    help_texts = {
-                        'R²': "O Coeficiente de Determinação (R²) mede a proporção da variância na variável dependente que é previsível a partir das variáveis independentes. Um valor mais próximo de 1 indica um modelo melhor.",
-                        'MSE': "O Erro Quadrático Médio (MSE) é a média dos quadrados dos erros, ou seja, a diferença média ao quadrado entre os valores previstos e os valores reais. Um valor menor indica um modelo melhor.",
-                        'RMSE': "A Raiz do Erro Quadrático Médio (RMSE) é a raiz quadrada do MSE. Ela representa, aproximadamente, a diferença média entre os valores previstos e os valores reais. Um valor menor indica um modelo melhor."
-                    }
-
-                    for i, (metric, value) in enumerate(metrics.items()):
-                        with metric_cols[i]:
-                            st.metric(metric, value, help=help_texts[metric])
-
-                    # Visualization section
-                    st.subheader("Visualizations")
-
-                    # Actual vs Predicted plot
-                    fig = px.scatter(
-                        x=y_test,
-                        y=y_pred,
-                        labels={'x': 'Actual Values', 'y': 'Predicted Values'},
-                        title='Actual vs Predicted Values'
-                    )
-
-                    # Add Previsoes line
-                    fig.add_trace(
-                        go.Scatter(
-                            x=[y_test.min(), y_test.max()],
-                            y=[y_test.min(), y_test.max()],
-                            mode='lines',
-                            name='Previsoes',
-                            line=dict(color='#50E3C2', dash='dash')
+                        Until then, you can explore other models like Linear Regression.
+                    """)
+                else:
+                    with st.spinner("Training XGBoost model..."):
+                        # Train XGBoost model
+                        xgb_model = xgb.XGBRegressor(
+                            objective='reg:squarederror',
+                            n_estimators=100,
+                            learning_rate=0.1,
+                            random_state=42
                         )
-                    )
+                        xgb_model.fit(X_train, y_train)
+                        st.session_state.models['XGBoost'] = xgb_model
 
-                    fig.update_layout(
-                        template='plotly_white',
-                        plot_bgcolor='white',
-                        width=800,
-                        height=500
-                    )
+                        # Make predictions
+                        y_pred = xgb_model.predict(X_test)
 
-                    st.plotly_chart(fig, use_container_width=True)
+                        # Calculate metrics
+                        r2 = r2_score(y_test, y_pred)
+                        mse = mean_squared_error(y_test, y_pred)
+                        rmse = np.sqrt(mse)
 
-                    # Feature importance
-                    importance = pd.DataFrame({
-                        'Feature': feature_columns,
-                        'Importance': xgb_model.feature_importances_
-                    })
-                    importance = importance.sort_values('Importance', ascending=True)
+                        # Display metrics
+                        st.subheader("Model Performance Metrics")
+                        metric_cols = st.columns(3)
+                        metrics = {
+                            'R²': round(r2, 3),
+                            'MSE': round(mse, 3),
+                            'RMSE': round(rmse, 3)
+                        }
 
-                    fig_importance = px.bar(
-                        importance,
-                        x='Importance',
-                        y='Feature',
-                        orientation='h',
-                        title='Feature Importance (XGBoost)'
-                    )
-                    fig_importance.update_layout(template='plotly_white')
-                    st.plotly_chart(fig_importance, use_container_width=True)
+                        for i, (metric, value) in enumerate(metrics.items()):
+                            with metric_cols[i]:
+                                st.metric(metric, value)
+
+                        # Visualization section
+                        st.subheader("Visualizations")
+
+                        # Actual vs Predicted plot
+                        fig = px.scatter(
+                            x=y_test,
+                            y=y_pred,
+                            labels={'x': 'Actual Values', 'y': 'Predicted Values'},
+                            title='Actual vs Predicted Values'
+                        )
+
+                        # Add perfect prediction line
+                        fig.add_trace(
+                            go.Scatter(
+                                x=[y_test.min(), y_test.max()],
+                                y=[y_test.min(), y_test.max()],
+                                mode='lines',
+                                name='Perfect Prediction',
+                                line=dict(color='#50E3C2', dash='dash')
+                            )
+                        )
+
+                        fig.update_layout(
+                            template='plotly_white',
+                            plot_bgcolor='white',
+                            width=800,
+                            height=500
+                        )
+
+                        st.plotly_chart(fig, use_container_width=True)
+
+                        # Feature importance
+                        importance = pd.DataFrame({
+                            'Feature': feature_columns,
+                            'Importance': xgb_model.feature_importances_
+                        })
+                        importance = importance.sort_values('Importance', ascending=True)
+
+                        fig_importance = px.bar(
+                            importance,
+                            x='Importance',
+                            y='Feature',
+                            orientation='h',
+                            title='Feature Importance (XGBoost)'
+                        )
+                        fig_importance.update_layout(template='plotly_white')
+                        st.plotly_chart(fig_importance, use_container_width=True)
 
             # Model Comparison Tab
-            with tabs[6]:
+            with tabs[2]:
                 st.markdown("""
                     ### Model Comparison
                     Compare the performance of different models using cross-validation.
@@ -355,7 +342,7 @@ if uploaded_file is not None:
             for i, model_name in enumerate([
                 "CatBoost", "LightGBM", 
                 "Market Mix Modeling", "Deep Learning (LSTM)"
-            ], 2):
+            ], 3):
                 with tabs[i]:
                     st.info(f"🚧 {model_name} implementation coming soon!")
                     st.markdown(f"""
@@ -370,9 +357,11 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"Error processing file: {str(e)}")
+else:
+    st.info("Please upload a CSV file to begin the analysis.")
 
 # Footer
 st.markdown("""
     ---
-    Feito com ❤️ FCamara | Data Science
+    Made with ❤️ using Streamlit | Data Science Tool
 """)
