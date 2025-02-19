@@ -1,4 +1,3 @@
-# main.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -125,7 +124,7 @@ def main():
     if df is not None:
         # 1) Exibição da base e matriz de correlação completa (todas as colunas)
         st.subheader("Pré-visualização dos Dados")
-        st.dataframe(df.head(), hide_index=True)
+        st.dataframe(df, hide_index=True, height=250)
         
         # Converter colunas não numéricas para códigos numéricos para cálculo da correlação
         df_corr = df.copy()
@@ -147,7 +146,7 @@ def main():
         )
         st.plotly_chart(fig_corr_full, use_container_width=True)
         
-        # 2 & 3) Configuração de Datas e Agrupamento
+        # 2 & 3) Configuração de Datas e Agrupamento com data range e group by na mesma linha
         st.subheader("Configuração de Datas")
         st.markdown("Escolha o intervalo de datas e a granularidade para a análise.")
         
@@ -160,23 +159,27 @@ def main():
             
             min_date = df['dt_partition'].min().date()
             max_date = df['dt_partition'].max().date()
-            date_range = st.date_input(
-                "Selecione o intervalo de datas:",
-                value=[min_date, max_date],
-                min_value=min_date,
-                max_value=max_date
-            )
-            if isinstance(date_range, list) and len(date_range) == 2:
+            col_date1, col_date2 = st.columns(2)
+            with col_date1:
+                date_range = st.date_input(
+                    "Selecione o intervalo de datas:",
+                    value=[min_date, max_date],
+                    min_value=min_date,
+                    max_value=max_date
+                )
+            with col_date2:
+                group_option = st.selectbox(
+                    "Agrupar dados por:",
+                    options=["Data e hora", "Data", "Semana", "Mês", "Quarter", "Ano"],
+                    help="Escolha a granularidade para agregação dos dados"
+                )
+            
+            if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
                 start_date, end_date = date_range
                 df_filtered = df[(df['dt_partition'].dt.date >= start_date) & (df['dt_partition'].dt.date <= end_date)]
             else:
                 df_filtered = df.copy()
             
-            group_option = st.selectbox(
-                "Agrupar dados por:",
-                options=["Data e hora", "Data", "Semana", "Mês", "Quarter", "Ano"],
-                help="Escolha a granularidade para agregação dos dados"
-            )
             group_map = {
                 "Data e hora": None,
                 "Data": "D",
@@ -204,20 +207,29 @@ def main():
                 df_model = df_filtered.copy()
                 
             st.markdown("Pré-visualização dos dados após tratamento:")
-            st.dataframe(df_model.head(), hide_index=True)
+            st.dataframe(df_model, hide_index=True, height=250)
         else:
             st.error("A coluna 'dt_partition' não foi encontrada no dataframe.")
             return
         
-        # 4) Seleção da variável alvo (Y) e análise de correlação
+        # 4 & 5) Seleção das variáveis (X e Y) na mesma linha e exibição do dataframe logo abaixo
         st.subheader("Seleção de Variáveis")
         colunas_model = df_model.columns.tolist()
         if 'dt_partition' in colunas_model:
             colunas_model.remove('dt_partition')
-        alvo = st.selectbox(
-            "Selecione a variável que deseja prever (Y):",
-            options=colunas_model
-        )
+        col_y, col_x = st.columns(2)
+        with col_y:
+            alvo = st.selectbox(
+                "Selecione a variável que deseja prever (Y):",
+                options=colunas_model
+            )
+        with col_x:
+            opcoes_features = ["Selecionar todas as colunas"] + [col for col in df_model.columns if col not in ['dt_partition', alvo]]
+            selecionadas = st.multiselect(
+                "Selecione as variáveis explicativas (X):",
+                options=opcoes_features,
+                help="Selecione as features desejadas. Se escolher 'Selecionar todas as colunas', todas as colunas serão usadas."
+            )
         
         # Calcular a correlação de Y com as demais colunas (convertendo para numérico se necessário)
         df_corr_model = df_model.copy()
@@ -225,13 +237,9 @@ def main():
             if not pd.api.types.is_numeric_dtype(df_corr_model[col]):
                 df_corr_model[col] = df_corr_model[col].astype('category').cat.codes
         corr_matrix_model = df_corr_model.corr()
-        
-        # Extrair a correlação de Y com as demais colunas, ordenada por valor absoluto decrescente
         corr_series = corr_matrix_model[alvo].drop(alvo).fillna(0)
         corr_series = corr_series.reindex(corr_series.abs().sort_values(ascending=False).index)
         df_corr_y = corr_series.to_frame(name="Correlação")
-
-        # Adicionar nome ao índice
         df_corr_y.index.name = "Colunas"
 
         custom_cmap = LinearSegmentedColormap.from_list(
@@ -245,25 +253,14 @@ def main():
             height=400
         )
         
-        # 5) Seleção das variáveis explicativas (X)
-        opcoes_features = ["Selecionar todas as colunas"] + [col for col in df_model.columns if col not in ['dt_partition', alvo]]
-        selecionadas = st.multiselect(
-            "Selecione as variáveis explicativas (X):",
-            options=opcoes_features,
-            help="Selecione as features desejadas. Se escolher 'Selecionar todas as colunas', todas as colunas serão usadas."
-        )
-        if "Selecionar todas as colunas" in selecionadas:
-            features = [col for col in df_model.columns if col not in ['dt_partition', alvo]]
-        else:
-            features = selecionadas
-        
-        if not features:
-            st.warning("Selecione pelo menos uma variável para X.")
-            return
-        
-        # 6) Botão para executar os modelos
+        # 6) Botão para executar os modelos usando o dataframe tratado (df_model)
         if st.button("Rodar Modelos"):
-            X = df_model[features].fillna(df_model[features].mean())
+            # Definir as colunas selecionadas para X garantindo que apenas colunas numéricas sejam usadas para preencher NaNs
+            selected_columns = (selecionadas if "Selecionar todas as colunas" not in selecionadas 
+                                else [col for col in df_model.columns if col not in ['dt_partition', alvo]])
+            X = df_model[selected_columns].fillna(
+                df_model[selected_columns].select_dtypes(include=[np.number]).mean()
+            )
             y = df_model[alvo]
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
             
@@ -296,7 +293,9 @@ def main():
                         if config.get('equacao', False):
                             st.subheader("Equação do Modelo")
                             equacao = f"{alvo} = {modelo.intercept_:.4f}"
-                            for coef, feature in zip(modelo.coef_, features):
+                            features_used = (selecionadas if "Selecionar todas as colunas" not in selecionadas 
+                                             else [col for col in df_model.columns if col not in ['dt_partition', alvo]])
+                            for coef, feature in zip(modelo.coef_, features_used):
                                 equacao += f" + ({coef:.4f} × {feature})"
                             st.code(equacao)
                         
@@ -309,7 +308,7 @@ def main():
                             importancia = np.abs(modelo.coef_)
                             
                         df_importancia = pd.DataFrame({
-                            'Variável': features,
+                            'Variável': features_used,
                             'Importância': importancia
                         }).sort_values('Importância', ascending=True)
                         
