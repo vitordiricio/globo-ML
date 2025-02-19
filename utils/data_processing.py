@@ -82,13 +82,87 @@ def calculate_correlation_series(df, target):
     Returns:
         Series: Série com as correlações, ordenadas pelo valor absoluto em ordem decrescente.
     """
-
     df_corr = convert_non_numeric_to_codes(df)
-    corr_matrix = df_corr.corr()
+    corr_matrix = df_corr.corr().fillna(0)
     if target not in corr_matrix.columns:
         return None
     corr_series = corr_matrix[target].drop(target).fillna(0)
     corr_series = corr_series.reindex(corr_series.abs().sort_values(ascending=False).index)
-    df_corr_y = corr_series.to_frame(name="Correlação")
-    df_corr_y.index.name = "Colunas"
-    return df_corr_y
+    return corr_series
+
+
+def group_and_filter_by_date(df):
+
+    """
+    Pega o DataFrame original e filtra de acordo com o data range selecionado
+    E também agrupa por diferentes tipos de agrupamentos de data (Data e hora, Data, Semana, Mês...)
+    
+    Args:
+        df (DataFrame): DataFrame para análise.
+    
+    Returns:
+        df_model (DataFrame): o DataFrame que mantém só os dados filtrados e agrupados de acordo
+    """
+
+    if 'dt_partition' in df.columns:
+        try:
+            df['dt_partition'] = pd.to_datetime(df['dt_partition'])
+        except Exception as e:
+            st.error(f"Erro ao converter 'dt_partition' para datetime: {e}")
+            return
+        
+        min_date = df['dt_partition'].min().date()
+        max_date = df['dt_partition'].max().date()
+        col_date1, col_date2 = st.columns(2)
+        with col_date1:
+            date_range = st.date_input(
+                "Selecione o intervalo de datas:",
+                value=[min_date, max_date],
+                min_value=min_date,
+                max_value=max_date
+            )
+        with col_date2:
+            group_option = st.selectbox(
+                "Agrupar dados por:",
+                options=["Data e hora", "Data", "Semana", "Mês", "Quarter", "Ano"],
+                help="Escolha a granularidade para agregação dos dados"
+            )
+        
+        if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
+            start_date, end_date = date_range
+            df_filtered = df[(df['dt_partition'].dt.date >= start_date) & (df['dt_partition'].dt.date <= end_date)]
+        else:
+            df_filtered = df.copy()
+        
+        group_map = {
+            "Data e hora": None,
+            "Data": "D",
+            "Semana": "W",
+            "Mês": "ME",
+            "Quarter": "QE",
+            "Ano": "YE"
+        }
+        freq = group_map[group_option]
+        if freq is not None:
+            # Agrupar dados utilizando a média para colunas numéricas
+            df_model = df_filtered.groupby(pd.Grouper(key='dt_partition', freq=freq)).mean().reset_index()
+            # Formatar a coluna dt_partition de acordo com a granularidade selecionada
+            if group_option == "Data":
+                df_model['dt_partition'] = df_model['dt_partition'].dt.strftime('%Y-%m-%d')
+            elif group_option == "Semana":
+                df_model['dt_partition'] = df_model['dt_partition'].dt.strftime('%Y-W%U')
+            elif group_option == "Mês":
+                df_model['dt_partition'] = df_model['dt_partition'].dt.strftime('%Y-%m')
+            elif group_option == "Quarter":
+                df_model['dt_partition'] = df_model['dt_partition'].dt.to_period('Q').astype(str)
+            elif group_option == "Ano":
+                df_model['dt_partition'] = df_model['dt_partition'].dt.year.astype(str)
+        else:
+            df_model = df_filtered.copy()
+            
+        st.markdown("Pré-visualização dos dados após tratamento:")
+        st.dataframe(df_model, hide_index=True, height=250)
+        return df_model
+    else:
+        st.error("A coluna 'dt_partition' não foi encontrada no dataframe.")
+        return

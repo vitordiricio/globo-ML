@@ -2,27 +2,20 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from matplotlib.colors import LinearSegmentedColormap
-
-from utils.config import configurar_pagina
-from utils.ui import mostrar_cabecalho
-from utils.data_processing import (
-    carregar_dados,
-    filter_and_group_by_date,
-    convert_non_numeric_to_codes,
-    calculate_correlation_series
-)
-from utils.metrics import mostrar_metricas
-from utils.visualization import (
-    plot_previsoes_vs_reais,
-    plot_feature_importance,
-    plot_correlation_heatmap
-)
+import plotly.express as px
 from utils.model_evaluation import ModelEvaluator
+import matplotlib.pyplot as plt
 
-# Import model classes directly (each model encapsulates its own logic)
-from models.linear_regression import LinearRegressionModel
-from models.xgboost_model import XGBoostModel
+from utils.config_page import configurar_pagina, mostrar_cabecalho
+from utils.data_processing import carregar_dados, group_and_filter_by_date
+
+from utils.graphs_views import (
+    mostrar_metricas, 
+    plot_previsoes_vs_reais, 
+    plot_heatmap_correlation_total, 
+    cria_dataframe_correlacao_com_target
+)
+from utils.ml_models import AVAILABLE_MODELS
 
 def main():
     configurar_pagina()
@@ -34,48 +27,13 @@ def main():
         st.subheader("Pré-visualização dos Dados")
         st.dataframe(df, hide_index=True, height=250)
         
-        # Matriz de correlação completa
-        df_corr_numeric = convert_non_numeric_to_codes(df)
-        corr_matrix_full = df_corr_numeric.corr().fillna(0)
-        
-        st.subheader("Matriz de Correlação Completa (Todas as Colunas)")
-        plot_correlation_heatmap(corr_matrix_full, "Matriz de Correlação Completa")
+        # Converter colunas não numéricas para códigos numéricos para cálculo da correlação
+        plot_heatmap_correlation_total(df)
         
         # Configuração de datas e agrupamento
         st.subheader("Configuração de Datas")
         st.markdown("Escolha o intervalo de datas e a granularidade para a análise.")
-        
-        if 'dt_partition' in df.columns:
-            try:
-                df['dt_partition'] = pd.to_datetime(df['dt_partition'])
-            except Exception as e:
-                st.error(f"Erro ao converter 'dt_partition' para datetime: {e}")
-                return
-            
-            min_date = df['dt_partition'].min().date()
-            max_date = df['dt_partition'].max().date()
-            col_date1, col_date2 = st.columns(2)
-            with col_date1:
-                date_range = st.date_input(
-                    "Selecione o intervalo de datas:",
-                    value=[min_date, max_date],
-                    min_value=min_date,
-                    max_value=max_date
-                )
-            with col_date2:
-                group_option = st.selectbox(
-                    "Agrupar dados por:",
-                    options=["Data e hora", "Data", "Semana", "Mês", "Quarter", "Ano"],
-                    help="Escolha a granularidade para agregação dos dados"
-                )
-            
-            df_model = filter_and_group_by_date(df, 'dt_partition', group_option, date_range)
-            
-            st.markdown("Pré-visualização dos dados após tratamento:")
-            st.dataframe(df_model, hide_index=True, height=250)
-        else:
-            st.error("A coluna 'dt_partition' não foi encontrada no dataframe.")
-            return
+        df_model = group_and_filter_by_date(df)
         
         # Seleção de variáveis
         st.subheader("Seleção de Variáveis")
@@ -96,81 +54,73 @@ def main():
                 help="Selecione as features desejadas. Se escolher 'Selecionar todas as colunas', todas as colunas serão usadas."
             )
         
-        # Exibe correlação entre as variáveis e o alvo
-        corr_series = calculate_correlation_series(df_model, alvo)
-        if corr_series is not None:
-            st.markdown(f"**Correlação das variáveis com `{alvo}`:**")
-            custom_cmap = LinearSegmentedColormap.from_list(
-                "custom_cmap", 
-                [(0.0, "lightcoral"), (0.5, "yellow"), (1.0, "lightgreen")]
-            )
-            st.dataframe(
-                corr_series.style.format("{:.5f}").background_gradient(cmap=custom_cmap),
-                height=400
-            )
+        # Calcular a correlação de Y com as demais colunas (convertendo para numérico se necessário)
+        cria_dataframe_correlacao_com_target(df_model, alvo)
         
-        # Define as features a serem usadas
-        features_used = (selecionadas if "Selecionar todas as colunas" not in selecionadas 
-                         else [col for col in df_model.columns if col not in ['dt_partition', alvo]])
-        X = df_model[features_used].fillna(
-            df_model[features_used].select_dtypes(include=[np.number]).mean()
-        )
-        y = df_model[alvo]
-        
-        # Ao clicar no botão, executa os modelos
         if st.button("Rodar Modelos"):
-            # Lista de classes de modelos a serem executados
-            model_classes = [LinearRegressionModel, XGBoostModel]
-            tabs_titles = [cls.__name__ for cls in model_classes] + [
-                "CatBoost", "LightGBM", "Modelo de Marketing Mix", "Deep Learning (LSTM)", "Comparação de Modelos"
-            ]
-            abas = st.tabs(tabs_titles)
+            if "models" not in st.session_state:
+                st.session_state.models = {}
+            # Define as colunas selecionadas para X
+            selected_columns = (selecionadas if "Selecionar todas as colunas" not in selecionadas 
+                                else [col for col in df_model.columns if col not in ['dt_partition', alvo]])
+            features_used = selected_columns
             
-            for i, ModelClass in enumerate(model_classes):
+            # Prepara os dados: passa o dataframe completo e deixa que cada modelo faça sua própria divisão
+            X = df_model[selected_columns].fillna(
+                df_model[selected_columns].select_dtypes(include=[np.number]).mean()
+            )
+            y = df_model[alvo]
+            
+            # Cria abas: uma para cada modelo disponível e uma para a comparação de modelos
+            model_tabs = [model_class.model_name for model_class in AVAILABLE_MODELS] + ["Comparação de Modelos"]
+            abas = st.tabs(model_tabs)
+            
+            for i, model_class in enumerate(AVAILABLE_MODELS):
                 with abas[i]:
-                    # Instancia o modelo e exibe sua descrição
-                    model_instance = ModelClass()
-                    st.markdown(f"### {ModelClass.__name__}")
-                    st.markdown(ModelClass.description)
+                    st.markdown(f"### {model_class.model_name}")
+                    st.markdown(model_class.description)
                     
-                    with st.spinner(f"Treinando {ModelClass.__name__}..."):
-                        result = model_instance.run(X, y)
-                    
-                    # Armazena o modelo na sessão
-                    st.session_state.models[ModelClass.__name__] = model_instance
-                    
-                    y_test = result["y_test"]
-                    y_pred = result["y_pred"]
-                    
-                    mostrar_metricas(y_test, y_pred)
-                    
-                    # Exibe a equação do modelo se aplicável (ex.: Regressão Linear)
-                    if hasattr(model_instance, 'intercept_') and hasattr(model_instance, 'coef_'):
-                        st.subheader("Equação do Modelo")
-                        equacao = f"{alvo} = {model_instance.intercept_:.4f}"
-                        for coef, feature in zip(model_instance.coef_, features_used):
-                            equacao += f" + ({coef:.4f} × {feature})"
-                        st.code(equacao)
-                    
-                    plot_previsoes_vs_reais(y_test, y_pred)
-                    
-                    st.subheader("Importância das Variáveis")
-                    if hasattr(model_instance, 'feature_importances_'):
-                        importancia = model_instance.feature_importances_
-                        plot_feature_importance(features_used, importancia)
+                    with st.spinner(f"Treinando {model_class.model_name}..."):
+                        # Instancia e treina o modelo usando seu método run (que já faz o split internamente)
+                        modelo = model_class()
+                        resultado = modelo.run(X, y)
+                        st.session_state.models[model_class.model_name] = modelo
+                        
+                        y_test = resultado["y_test"]
+                        y_pred = resultado["y_pred"]
+                        
+                        mostrar_metricas(y_test, y_pred)
+                        
+                        # Exibe a equação apenas para o modelo de Regressão Linear
+                        if model_class.model_name == "Regressão Linear":
+                            st.subheader("Equação do Modelo")
+                            equacao = f"{alvo} = {modelo.intercept_:.4f}"
+                            for coef, feature in zip(modelo.coef_, features_used):
+                                equacao += f" + ({coef:.4f} × {feature})"
+                            st.code(equacao)
+                        
+                        plot_previsoes_vs_reais(y_test, y_pred)
+                        
+                        st.subheader("Importância das Variáveis")
+                        if hasattr(modelo, 'feature_importances_'):
+                            importancia = modelo.feature_importances_
+                        else:
+                            importancia = np.abs(modelo.coef_)
+                            
+                        df_importancia = pd.DataFrame({
+                            'Variável': features_used,
+                            'Importância': importancia
+                        }).sort_values('Importância', ascending=True)
+                        
+                        fig = px.bar(
+                            df_importancia,
+                            x='Importância',
+                            y='Variável',
+                            orientation='h'
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
             
-            # Abas para funcionalidades futuras
-            for i in range(len(model_classes), len(abas)-1):
-                with abas[i]:
-                    st.info("🚧 Funcionalidade em desenvolvimento!")
-                    st.markdown("""
-                    **Em breve:**
-                    - Treinamento do modelo
-                    - Métricas de performance
-                    - Visualizações detalhadas
-                    - Exportação de resultados
-                    """)
-            
+            # Aba de Comparação de Modelos
             with abas[-1]:
                 st.markdown("""
                 ### Comparação de Modelos
