@@ -1,17 +1,17 @@
-#utils/model_evaluation.py
+# utils/model_evaluation.py
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import KFold, cross_val_score
-import plotly.express as px
+from sklearn.model_selection import cross_val_score
 import plotly.graph_objects as go
 from scipy import stats
 
 class ModelEvaluator:
     def __init__(self, models_dict):
         """
-        Initialize with a dictionary of models
+        Inicializa com um dicionário de modelos.
+        
         Args:
-            models_dict (dict): Dictionary with model names as keys and model objects as values
+            models_dict (dict): Dicionário com nomes dos modelos como chaves e objetos dos modelos como valores.
         """
         self.models = models_dict
         self.cv_results = {}
@@ -19,9 +19,12 @@ class ModelEvaluator:
         
     def perform_cross_validation(self, X, y, cv=5, scoring='neg_mean_squared_error'):
         """
-        Perform k-fold cross-validation for all models
+        Executa validação cruzada k-fold para todos os modelos que implementam a interface fit.
         """
         for name, model in self.models.items():
+            if not hasattr(model, 'fit'):
+                # Pula modelos que não implementam a interface esperada
+                continue
             cv_scores = cross_val_score(
                 model, X, y, 
                 cv=cv, 
@@ -36,7 +39,7 @@ class ModelEvaluator:
             
     def get_summary_stats(self):
         """
-        Get summary statistics for each model's CV results
+        Retorna estatísticas resumo dos resultados da validação cruzada para cada modelo.
         """
         summary = {}
         for name, scores in self.cv_results.items():
@@ -50,7 +53,7 @@ class ModelEvaluator:
         
     def plot_cv_comparison(self):
         """
-        Create a box plot comparing model performances
+        Cria um box plot comparando a performance dos modelos na validação cruzada.
         """
         fig = go.Figure()
         
@@ -74,8 +77,10 @@ class ModelEvaluator:
         
     def perform_statistical_test(self, alpha=0.05):
         """
-        Perform statistical test to compare models
-        Returns: DataFrame with p-values for model comparisons
+        Executa teste estatístico para comparar os modelos.
+        
+        Returns:
+            DataFrame com os valores-p das comparações entre os modelos.
         """
         model_names = list(self.cv_results.keys())
         n_models = len(model_names)
@@ -83,7 +88,6 @@ class ModelEvaluator:
         
         for i in range(n_models):
             for j in range(i+1, n_models):
-                # Perform paired t-test
                 t_stat, p_val = stats.ttest_rel(
                     self.cv_results[model_names[i]],
                     self.cv_results[model_names[j]]
