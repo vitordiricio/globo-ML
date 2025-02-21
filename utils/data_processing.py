@@ -2,17 +2,141 @@
 import pandas as pd
 import streamlit as st
 
-def carregar_dados():
+def tratar_redes_sociais(df):
     """
-    Permite o upload de um arquivo CSV e retorna um DataFrame.
+    Função específica para tratar os dados de redes sociais.
     """
-    arquivo = st.file_uploader("", type=['csv'])
-    if arquivo is not None:
-        try:
-            return pd.read_csv(arquivo)
-        except Exception as e:
-            st.error(f"Erro ao processar arquivo: {str(e)}")
-    return None
+    if df is None:
+        return None
+        
+    # Tratamento inicial
+    df = df.ffill()
+    
+    # Transformação de data
+    df['dt_partition'] = pd.to_datetime(df['dt_partition'], format='%d/%m/%Y')
+    df['dt_partition'] = pd.to_datetime(
+        df['dt_partition'].dt.strftime('%d/%m/%Y') + ' ' +
+        df['dt_hora'].astype(int).astype(str) + ':00:00',
+        format='%d/%m/%Y %H:%M:%S'
+    )
+    
+    # Seleção de colunas
+    colunas = ['ds_platform', 'nr_total_interactions', 'nr_reactions', 'nr_shares', 
+               'nr_comments', 'nr_saves', 'nr_link_clicks', 'nr_impressions_total', 
+               'nr_reach', 'dt_partition', 'id_post']
+    df = df[colunas]
+    
+    # Agregação
+    df_agregado = (
+        df.groupby(['ds_platform', 'dt_partition'])
+        .agg(
+            nr_total_interactions=('nr_total_interactions', 'sum'),
+            nr_reactions=('nr_reactions', 'sum'),
+            nr_shares=('nr_shares', 'sum'),
+            nr_comments=('nr_comments', 'sum'),
+            nr_saves=('nr_saves', 'sum'),
+            nr_link_clicks=('nr_link_clicks', 'sum'),
+            nr_impressions_total=('nr_impressions_total', 'sum'),
+            nr_reach=('nr_reach', 'sum'),
+            posts_quantity=('id_post', 'nunique')
+        )
+        .sort_values(by=['dt_partition', 'ds_platform'])
+        .reset_index()
+    )
+    
+    # Transformação para formato wide
+    df_melted = df_agregado.melt(
+        id_vars=["ds_platform", "dt_partition"], 
+        var_name="metrica", 
+        value_name="valor"
+    )
+    df_melted["nova_coluna"] = df_melted["ds_platform"] + "_" + df_melted["metrica"]
+    
+    # Pivot e limpeza final
+    df_final = df_melted.pivot(
+        index="dt_partition", 
+        columns="nova_coluna", 
+        values="valor"
+    ).reset_index()
+    df_final.columns.name = None
+    df_final = df_final.fillna(0)
+    
+    # Adição de dias úteis
+    df_final['dia_util'] = df_final['dt_partition'].dt.weekday
+    
+    return df_final
+
+def tratar_globoplay(df):
+    """
+    Função específica para tratar os dados do GloboPlay.
+    """
+    if df is None:
+        return None
+    
+    # Adicione aqui o tratamento específico para GloboPlay
+    return df
+
+def tratar_tv_linear(df):
+    """
+    Função específica para tratar os dados de TV Linear.
+    """
+    if df is None:
+        return None
+    
+    # Adicione aqui o tratamento específico para TV Linear
+    return df
+
+def carregar_e_tratar_dados():
+    """
+    Função principal que carrega e trata todos os dados.
+    Returns:
+        tuple: DataFrames tratados (redes_sociais, globoplay, tv_linear)
+    """
+    st.subheader("Upload dos dados")
+    
+    # Criar três colunas
+    col1, col2, col3 = st.columns(3)
+    
+    # Primeira coluna - Redes Sociais
+    with col1:
+        st.text("CSV de redes sociais:")
+        arquivo_redes_sociais = st.file_uploader("", type=['csv'], key='upload1')
+        df_redes_sociais = None
+        if arquivo_redes_sociais is not None:
+            try:
+                df_redes_sociais = pd.read_csv(arquivo_redes_sociais)
+                df_redes_sociais = tratar_redes_sociais(df_redes_sociais)
+                st.success("Arquivo de redes sociais processado!")
+            except Exception as e:
+                st.error(f"Erro ao processar arquivo: {str(e)}")
+    
+    # Segunda coluna - GloboPlay
+    with col2:
+        st.text("CSV de GloboPlay:")
+        arquivo_globoplay = st.file_uploader("", type=['csv'], key='upload2')
+        df_globoplay = None
+        if arquivo_globoplay is not None:
+            try:
+                df_globoplay = pd.read_csv(arquivo_globoplay)
+                df_globoplay = tratar_globoplay(df_globoplay)
+                st.success("Arquivo do GloboPlay processado!")
+            except Exception as e:
+                st.error(f"Erro ao processar arquivo: {str(e)}")
+    
+    # Terceira coluna - TV Linear
+    with col3:
+        st.text("CSV de TV Linear:")
+        arquivo_tv_linear = st.file_uploader("", type=['csv'], key='upload3')
+        df_tv_linear = None
+        if arquivo_tv_linear is not None:
+            try:
+                df_tv_linear = pd.read_csv(arquivo_tv_linear)
+                df_tv_linear = tratar_tv_linear(df_tv_linear)
+                st.success("Arquivo de TV Linear processado!")
+            except Exception as e:
+                st.error(f"Erro ao processar arquivo: {str(e)}")
+    
+    return df_redes_sociais, df_globoplay, df_tv_linear
 
 def convert_non_numeric_to_codes(df):
     """
@@ -145,7 +269,7 @@ def group_and_filter_by_date(df):
         freq = group_map[group_option]
         if freq is not None:
             # Agrupar dados utilizando a média para colunas numéricas
-            df_model = df_filtered.groupby(pd.Grouper(key='dt_partition', freq=freq)).mean().reset_index()
+            df_model = df_filtered.groupby(pd.Grouper(key='dt_partition', freq=freq)).sum().reset_index()
             # Formatar a coluna dt_partition de acordo com a granularidade selecionada
             if group_option == "Data":
                 df_model['dt_partition'] = df_model['dt_partition'].dt.strftime('%Y-%m-%d')

@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import pandas as pd
 
 import numpy as np
-from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.metrics import r2_score, mean_squared_error, root_mean_squared_error
 from matplotlib.colors import LinearSegmentedColormap
 
 def plot_previsoes_vs_reais(y_test, y_pred):
@@ -86,7 +86,7 @@ def mostrar_metricas(y_test, y_pred):
     metricas = {
         'R²': r2_score(y_test, y_pred),
         'MSE': mean_squared_error(y_test, y_pred),
-        'RMSE': np.sqrt(mean_squared_error(y_test, y_pred))
+        'RMSE': root_mean_squared_error(y_test, y_pred)
     }
     
     cols = st.columns(3)

@@ -73,13 +73,13 @@
 }
 
 /* Alert Styles */
-.stAlert {
+/* .stAlert {
   background-color: var(--error-color);
   color: white;
   border-radius: 8px;
   box-shadow: var(--shadow-sm);
   animation: slideIn 0.3s ease-out;
-}
+} */
 
 /* Selectbox and Input Fields */
 .stSelectbox,
@@ -178,4 +178,82 @@
   background-color: var(--text-color) !important;
   border-radius: 4px;
   box-shadow: var(--shadow-md);
+}
+
+/* Cabeçalho da sidebar */
+.sidebar-header {
+  text-align: center;
+  padding: 10px;
+}
+.sidebar-header img {
+  height: 50px;
+  margin: 0 5px;
+  vertical-align: middle;
+}
+.sidebar-header h1 {
+  color: #0198d3;
+  margin-bottom: 0;
+  font-size: 24px;
+}
+.sidebar-header p {
+  font-size: 14px;
+  color: #555;
+  margin-top: 5px;
+}
+hr.sidebar-hr {
+  border: 1px solid #ccc;
+  margin: 10px 0;
+}
+
+/* Ajustes gerais do label */
+label[data-baseweb="radio"] {
+  /* Faz o label ocupar toda a largura disponível */
+  width: 100%;
+  /* Exibe tudo em linha única (mesmo o que não estiver oculto) */
+  display: flex;
+  align-items: center;
+  /* Aparência de botão/aba */
+  padding: 10px;
+  margin: 5px 0;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  color: #000; /* cor do texto */
+  box-sizing: border-box;
+}
+
+/* Efeito de hover */
+label[data-baseweb="radio"]:hover {
+  background-color: #e0e0e0;
+}
+
+/* Remove o input radio real */
+label[data-baseweb="radio"] input[type="radio"] {
+  display: none;
+}
+
+/* Remove o "div" que gera a bolinha personalizada do Streamlit */
+label[data-baseweb="radio"] > div:first-child {
+  display: none;
+}
+
+/* Quando a opção está selecionada (usa :has, suportado em navegadores modernos) */
+label[data-baseweb="radio"]:has(input[type="radio"]:checked) {
+  background-color: #0198d3;
+  color: #ffffff;
+}
+
+/* Alvo: o primeiro bloco horizontal (que contém os logos) */
+[data-testid="stHorizontalBlock"]:first-of-type {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 10px; /* espaço entre os logos */
+}
+
+/* Faz com que as colunas internas encolham conforme o conteúdo */
+[data-testid="stHorizontalBlock"]:first-of-type > [data-testid="stColumn"] {
+  flex: 0 0 auto !important;
 }

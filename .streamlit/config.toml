@@ -1,6 +1,7 @@
 [server]
 headless = true
 address = "0.0.0.0"
+enableStaticServing = true
 
 [theme]
 primaryColor = "#4A90E2"
