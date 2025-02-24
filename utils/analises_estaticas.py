@@ -12,8 +12,8 @@ def analise_redes_sociais(df):
     # Definição das plataformas e das métricas originais
     platforms = ["FACEBOOK", "TIKTOK", "INSTAGRAM", "YOUTUBE"]
     metrics = [
-        "nr_comments", "nr_link_clicks", "nr_reactions", "nr_saves",
-        "nr_shares", "nr_impressions_total", "nr_reach", "nr_total_interactions"
+        "nr_comments", "nr_reactions", "nr_saves",
+        "nr_shares", "nr_reach", "total_interactions", "nr_views", "nr_impressions"
     ]
 
     # Calcula o engajamento total para cada plataforma (soma de todas as métricas de engajamento)
@@ -61,7 +61,7 @@ def analise_redes_sociais(df):
                 break
 
     df_melted = df.melt(
-        id_vars=["dt_partition", "dia_util"],
+        id_vars=["ts_published_brt"],
         value_vars=cols_to_melt,
         var_name="col",
         value_name="valor"
@@ -79,21 +79,21 @@ def analise_redes_sociais(df):
     # Plot 1: Total Engagement per Platform (soma de cada métrica ao longo de todas as datas)
     total_engagement = df_plot1.groupby(["platform", "metrica"])["valor"].sum().reset_index()
     sns.barplot(x="platform", y="valor", hue="metrica", data=total_engagement, ax=axes[0, 0])
-    axes[0, 0].set_title("Total Engagement per Platform")
+    axes[0, 0].set_title("Engajamento total por plataforma")
     axes[0, 0].set_xlabel("Plataforma")
     axes[0, 0].set_ylabel("Total de Engajamento")
 
     # Plot 2: Average Engagement per Post per Platform
     avg_values = [df[f"{platform}_avg_engagement"].mean() for platform in platforms]
     sns.barplot(x=platforms, y=avg_values, ax=axes[0, 1])
-    axes[0, 1].set_title("Average Engagement per Post per Platform")
+    axes[0, 1].set_title("Engajamento médio por plataforma")
     axes[0, 1].set_xlabel("Plataforma")
     axes[0, 1].set_ylabel("Engajamento Médio por Post")
 
     # Plot 3: Número de Posts por Plataforma
     posts_values = [df[f"{platform}_posts_quantity"].sum() for platform in platforms]
     sns.barplot(x=platforms, y=posts_values, ax=axes[1, 0])
-    axes[1, 0].set_title("Number of Posts per Platform")
+    axes[1, 0].set_title("Qtd. de posts por plataforma")
     axes[1, 0].set_xlabel("Plataforma")
     axes[1, 0].set_ylabel("Quantidade de Posts")
 
@@ -101,8 +101,8 @@ def analise_redes_sociais(df):
     for platform in platforms:
         col_eng = f"{platform}_engagement"
         if col_eng in df.columns:
-            sns.lineplot(x="dt_partition", y=col_eng, data=df, label=platform, ax=axes[1, 1])
-    axes[1, 1].set_title("Engagement Over Time")
+            sns.lineplot(x="ts_published_brt", y=col_eng, data=df, label=platform, ax=axes[1, 1])
+    axes[1, 1].set_title("Engajamento x tempo")
     axes[1, 1].set_xlabel("Data")
     axes[1, 1].set_ylabel("Engajamento")
 

@@ -9,7 +9,7 @@ from pathlib import Path
 
 from utils.model_evaluation import ModelEvaluator
 from utils.config_page import configurar_pagina, mostrar_cabecalho
-from utils.data_processing import carregar_e_tratar_dados, group_and_filter_by_date
+from utils.data_processing import carregar_e_tratar_dados, group_and_filter_by_date, merge_data
 from utils.graphs_views import (
     mostrar_metricas, 
     plot_previsoes_vs_reais, 
@@ -46,26 +46,34 @@ def main():
     
     # --- Carregamento dos dados ---
     df_redes_sociais, df_globoplay, df_tv_linear = carregar_e_tratar_dados()
+
+    
     
     # Página Home
     if page == "Home":
         st.title("Home")
         
-        if df_redes_sociais is not None:
+        if df_redes_sociais is not None and df_globoplay is not None:
+            df_redes_sociais.to_csv('redes_sociais_tratado.csv', index=False)
+            df_globoplay.to_csv('globoplay_tratado.csv', index=False)
+            df_merged = merge_data(df_redes_sociais, df_globoplay)
             st.subheader("Pré-visualização dos Dados de Redes Sociais")
             st.dataframe(df_redes_sociais, hide_index=True, height=250)
+
+            st.subheader("Pré-visualização dos Dados juntos")
+            st.dataframe(df_merged, hide_index=True, height=250)
             
             # Exibe o heatmap de correlação
-            plot_heatmap_correlation_total(df_redes_sociais)
+            plot_heatmap_correlation_total(df_merged)
             
             st.subheader("Configuração de Datas")
             st.markdown("Escolha o intervalo de datas e a granularidade para a análise.")
-            df_model = group_and_filter_by_date(df_redes_sociais)
+            df_model = group_and_filter_by_date(df_merged)
             
             st.subheader("Seleção de Variáveis")
             colunas_model = df_model.columns.tolist()
-            if 'dt_partition' in colunas_model:
-                colunas_model.remove('dt_partition')
+            if 'ts_published_brt' in colunas_model:
+                colunas_model.remove('ts_published_brt')
             col_y, col_x = st.columns(2)
             with col_y:
                 alvo = st.selectbox(
@@ -73,7 +81,7 @@ def main():
                     options=colunas_model
                 )
             with col_x:
-                opcoes_features = ["Selecionar todas as colunas"] + [col for col in df_model.columns if col not in ['dt_partition', alvo]]
+                opcoes_features = ["Selecionar todas as colunas"] + [col for col in df_model.columns if col not in ['ts_published_brt', alvo]]
                 selecionadas = st.multiselect(
                     "Selecione as variáveis explicativas (X):",
                     options=opcoes_features,
@@ -91,7 +99,7 @@ def main():
                 selected_columns = (
                     selecionadas
                     if "Selecionar todas as colunas" not in selecionadas 
-                    else [col for col in df_model.columns if col not in ['dt_partition', alvo]]
+                    else [col for col in df_model.columns if col not in ['data_hora', alvo]]
                 )
                 features_used = selected_columns
                 X = df_model[selected_columns].fillna(

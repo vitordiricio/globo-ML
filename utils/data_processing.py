@@ -9,44 +9,37 @@ def tratar_redes_sociais(df):
     if df is None:
         return None
         
-    # Tratamento inicial
-    df = df.ffill()
     
     # Transformação de data
-    df['dt_partition'] = pd.to_datetime(df['dt_partition'], format='%d/%m/%Y')
-    df['dt_partition'] = pd.to_datetime(
-        df['dt_partition'].dt.strftime('%d/%m/%Y') + ' ' +
-        df['dt_hora'].astype(int).astype(str) + ':00:00',
-        format='%d/%m/%Y %H:%M:%S'
-    )
-    
+    df['ts_published_brt'] = df['ts_published_brt'].str.replace('.000000 UTC', '')
+    df['ts_published_brt'] = pd.to_datetime(df['ts_published_brt'])
     # Seleção de colunas
-    colunas = ['ds_platform', 'nr_total_interactions', 'nr_reactions', 'nr_shares', 
-               'nr_comments', 'nr_saves', 'nr_link_clicks', 'nr_impressions_total', 
-               'nr_reach', 'dt_partition', 'id_post']
+    colunas = ['ds_platform', 'total_interactions', 'nr_reactions', 'nr_shares', 
+                'nr_comments', 'nr_saves', 'nr_views', 'nr_impressions',
+                'nr_reach', 'ts_published_brt', 'id_post']
     df = df[colunas]
     
     # Agregação
     df_agregado = (
-        df.groupby(['ds_platform', 'dt_partition'])
+        df.groupby(['ds_platform', 'ts_published_brt'])
         .agg(
-            nr_total_interactions=('nr_total_interactions', 'sum'),
+            total_interactions=('total_interactions', 'sum'),
             nr_reactions=('nr_reactions', 'sum'),
             nr_shares=('nr_shares', 'sum'),
             nr_comments=('nr_comments', 'sum'),
             nr_saves=('nr_saves', 'sum'),
-            nr_link_clicks=('nr_link_clicks', 'sum'),
-            nr_impressions_total=('nr_impressions_total', 'sum'),
+            nr_views = ('nr_views', 'sum'),
             nr_reach=('nr_reach', 'sum'),
+            nr_impressions = ('nr_impressions', 'sum'),
             posts_quantity=('id_post', 'nunique')
         )
-        .sort_values(by=['dt_partition', 'ds_platform'])
+        .sort_values(by=['ts_published_brt', 'ds_platform'])
         .reset_index()
     )
     
     # Transformação para formato wide
     df_melted = df_agregado.melt(
-        id_vars=["ds_platform", "dt_partition"], 
+        id_vars=["ds_platform", "ts_published_brt"], 
         var_name="metrica", 
         value_name="valor"
     )
@@ -54,15 +47,12 @@ def tratar_redes_sociais(df):
     
     # Pivot e limpeza final
     df_final = df_melted.pivot(
-        index="dt_partition", 
+        index="ts_published_brt", 
         columns="nova_coluna", 
         values="valor"
     ).reset_index()
     df_final.columns.name = None
     df_final = df_final.fillna(0)
-    
-    # Adição de dias úteis
-    df_final['dia_util'] = df_final['dt_partition'].dt.weekday
     
     return df_final
 
@@ -73,8 +63,28 @@ def tratar_globoplay(df):
     if df is None:
         return None
     
+    df.columns = df.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '')
+    df = df.dropna()
+    df['data'] = pd.to_datetime(df['data'])
+
+    df = df[[col for col in df.columns if col not in ['mês', 'ano']]]
+
+    # Seleciona as colunas numéricas automaticamente
+    num_cols = df.select_dtypes(include='number').columns
+
+    df_horas = pd.concat([
+        pd.DataFrame({
+            'data': pd.date_range(start=row['data'], periods=24, freq='h')
+        }).assign(**{
+            col: int(round(row[col] / 24, 0))
+            for col in num_cols
+        })
+        for _, row in df.iterrows()
+    ], ignore_index=True)
+
+    
     # Adicione aqui o tratamento específico para GloboPlay
-    return df
+    return df_horas
 
 def tratar_tv_linear(df):
     """
@@ -137,6 +147,23 @@ def carregar_e_tratar_dados():
                 st.error(f"Erro ao processar arquivo: {str(e)}")
     
     return df_redes_sociais, df_globoplay, df_tv_linear
+
+def merge_data(df_redes_sociais, df_globoplay):
+
+
+    df_redes_sociais['ts_published_brt'] = df_redes_sociais['ts_published_brt'].dt.round('h')
+    df_globoplay['data'] = df_globoplay['data'].dt.round('h')
+
+    df_merged = pd.merge(
+        df_redes_sociais.rename(columns={'ts_published_brt': 'data_hora'}),
+        df_globoplay.rename(columns={'data': 'data_hora'}),
+        on='data_hora',
+        how='outer'
+    ).fillna(0)
+
+    df_merged = df_merged.groupby('data_hora', as_index=False).sum()
+
+    return df_merged
 
 def convert_non_numeric_to_codes(df):
     """
@@ -216,7 +243,6 @@ def calculate_correlation_series(df, target):
 
 
 def group_and_filter_by_date(df):
-
     """
     Pega o DataFrame original e filtra de acordo com o data range selecionado
     E também agrupa por diferentes tipos de agrupamentos de data (Data e hora, Data, Semana, Mês...)
@@ -228,65 +254,70 @@ def group_and_filter_by_date(df):
         df_model (DataFrame): o DataFrame que mantém só os dados filtrados e agrupados de acordo
     """
 
-    if 'dt_partition' in df.columns:
+    if 'data_hora' in df.columns:
         try:
-            df['dt_partition'] = pd.to_datetime(df['dt_partition'])
-        except Exception as e:
-            st.error(f"Erro ao converter 'dt_partition' para datetime: {e}")
-            return
-        
-        min_date = df['dt_partition'].min().date()
-        max_date = df['dt_partition'].max().date()
-        col_date1, col_date2 = st.columns(2)
-        with col_date1:
-            date_range = st.date_input(
-                "Selecione o intervalo de datas:",
-                value=[min_date, max_date],
-                min_value=min_date,
-                max_value=max_date
-            )
-        with col_date2:
-            group_option = st.selectbox(
-                "Agrupar dados por:",
-                options=["Data e hora", "Data", "Semana", "Mês", "Quarter", "Ano"],
-                help="Escolha a granularidade para agregação dos dados"
-            )
-        
-        if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
-            start_date, end_date = date_range
-            df_filtered = df[(df['dt_partition'].dt.date >= start_date) & (df['dt_partition'].dt.date <= end_date)]
-        else:
-            df_filtered = df.copy()
-        
-        group_map = {
-            "Data e hora": None,
-            "Data": "D",
-            "Semana": "W",
-            "Mês": "ME",
-            "Quarter": "QE",
-            "Ano": "YE"
-        }
-        freq = group_map[group_option]
-        if freq is not None:
-            # Agrupar dados utilizando a média para colunas numéricas
-            df_model = df_filtered.groupby(pd.Grouper(key='dt_partition', freq=freq)).sum().reset_index()
-            # Formatar a coluna dt_partition de acordo com a granularidade selecionada
-            if group_option == "Data":
-                df_model['dt_partition'] = df_model['dt_partition'].dt.strftime('%Y-%m-%d')
-            elif group_option == "Semana":
-                df_model['dt_partition'] = df_model['dt_partition'].dt.strftime('%Y-W%U')
-            elif group_option == "Mês":
-                df_model['dt_partition'] = df_model['dt_partition'].dt.strftime('%Y-%m')
-            elif group_option == "Quarter":
-                df_model['dt_partition'] = df_model['dt_partition'].dt.to_period('Q').astype(str)
-            elif group_option == "Ano":
-                df_model['dt_partition'] = df_model['dt_partition'].dt.year.astype(str)
-        else:
-            df_model = df_filtered.copy()
+            # Converter para datetime com UTC=True para lidar com timezone misto
+            df = df.copy()  # Criar uma cópia para evitar SettingWithCopyWarning
             
-        st.markdown("Pré-visualização dos dados após tratamento:")
-        st.dataframe(df_model, hide_index=True, height=250)
-        return df_model
+            min_date = df['data_hora'].dt.date.min()
+            max_date = df['data_hora'].dt.date.max()
+            
+            col_date1, col_date2 = st.columns(2)
+            with col_date1:
+                date_range = st.date_input(
+                    "Selecione o intervalo de datas:",
+                    value=[min_date, max_date],
+                    min_value=min_date,
+                    max_value=max_date
+                )
+            with col_date2:
+                group_option = st.selectbox(
+                    "Agrupar dados por:",
+                    options=["Data e hora", "Data", "Semana", "Mês", "Quarter", "Ano"],
+                    help="Escolha a granularidade para agregação dos dados"
+                )
+            
+            if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
+                start_date, end_date = date_range
+                df_filtered = df[(df['data_hora'].dt.date >= start_date) & 
+                               (df['data_hora'].dt.date <= end_date)]
+            else:
+                df_filtered = df.copy()
+            
+            group_map = {
+                "Data e hora": None,
+                "Data": "D",
+                "Semana": "W",
+                "Mês": "ME",
+                "Quarter": "QE",
+                "Ano": "YE"
+            }
+            freq = group_map[group_option]
+            
+            if freq is not None:
+                # Agrupar dados utilizando a média para colunas numéricas
+                df_model = df_filtered.groupby(pd.Grouper(key='data_hora', freq=freq)).sum().reset_index()
+                # Formatar a coluna data_hora de acordo com a granularidade selecionada
+                if group_option == "Data":
+                    df_model['data_hora'] = df_model['data_hora'].dt.strftime('%Y-%m-%d')
+                elif group_option == "Semana":
+                    df_model['data_hora'] = df_model['data_hora'].dt.strftime('%Y-W%U')
+                elif group_option == "Mês":
+                    df_model['data_hora'] = df_model['data_hora'].dt.strftime('%Y-%m')
+                elif group_option == "Quarter":
+                    df_model['data_hora'] = df_model['data_hora'].dt.to_period('Q').astype(str)
+                elif group_option == "Ano":
+                    df_model['data_hora'] = df_model['data_hora'].dt.year.astype(str)
+            else:
+                df_model = df_filtered.copy()
+                
+            st.markdown("Pré-visualização dos dados após tratamento:")
+            st.dataframe(df_model, hide_index=True, height=250)
+            return df_model
+            
+        except Exception as e:
+            st.error(f"Erro ao processar arquivo: {e}")
+            return None
     else:
-        st.error("A coluna 'dt_partition' não foi encontrada no dataframe.")
-        return
+        st.error("A coluna 'data_hora' não foi encontrada no dataframe.")
+        return None
