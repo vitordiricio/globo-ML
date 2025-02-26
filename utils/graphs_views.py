@@ -28,18 +28,35 @@ def plot_previsoes_vs_reais(y_test, y_pred):
 
 def plot_feature_importance(features, importance):
     """
-    Plota um gráfico de barras horizontal mostrando a importância das variáveis.
+    Plota um gráfico de barras horizontal com cores condicionais:
+    - Verde para valores positivos
+    - Vermelho para valores negativos
     """
     df_importancia = pd.DataFrame({
         'Variável': features,
         'Importância': importance
     }).sort_values('Importância', ascending=True)
+    
+    # Create color column based on importance values
+    df_importancia['Cor'] = df_importancia['Importância'].apply(
+        lambda x: 'green' if x >= 0 else 'red'
+    )
+    
     fig = px.bar(
         df_importancia,
         x='Importância',
         y='Variável',
-        orientation='h'
+        orientation='h',
+        color='Cor',
+        color_discrete_map={
+            'green': '#D9EAD3',  # Green for positive
+            'red': '#EA9999'     # Red for negative
+        }
     )
+    
+    # Remove legend if desired
+    fig.update_layout(showlegend=False)
+    
     st.plotly_chart(fig, use_container_width=True)
 
 def plot_heatmap_correlation_total(df):

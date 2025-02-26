@@ -1,6 +1,49 @@
 # utils/data_processing.py
 import pandas as pd
 import streamlit as st
+from datetime import datetime, timedelta
+import numpy as np
+
+def fill_hourly_gaps(df, datetime_column):
+    """
+    Fill gaps in hourly data with zeros for all metric columns using an optimized approach.
+    
+    Args:
+        df: DataFrame containing time series data
+        datetime_column: Name of the column containing datetime values
+        
+    Returns:
+        DataFrame: A new dataframe with hourly gaps filled with zeros
+    """
+    import pandas as pd
+    
+    # Make a copy to avoid modifying the original dataframe
+    df_copy = df.copy()
+    
+    # Ensure the datetime column is in datetime format
+    df_copy[datetime_column] = pd.to_datetime(df_copy[datetime_column])
+    
+    # Set the datetime column as the index
+    df_copy = df_copy.set_index(datetime_column)
+    
+    # Create a complete hourly range from min to max date
+    complete_range = pd.date_range(
+        start=df_copy.index.min(),
+        end=df_copy.index.max(),
+        freq='h'
+    )
+    
+    # Reindex the dataframe with the complete range and fill missing values with 0
+    filled_df = df_copy.reindex(complete_range, fill_value=0)
+    
+    # Reset index to turn the datetime back into a column
+    filled_df = filled_df.reset_index()
+    
+    # Rename the index column back to the original datetime column name
+    filled_df = filled_df.rename(columns={'index': datetime_column})
+    
+    return filled_df
+
 
 def tratar_redes_sociais(df):
     """
@@ -13,6 +56,7 @@ def tratar_redes_sociais(df):
     # Transformação de data
     df['ts_published_brt'] = df['ts_published_brt'].str.replace('.000000 UTC', '')
     df['ts_published_brt'] = pd.to_datetime(df['ts_published_brt'])
+    df['ts_published_brt'] = df['ts_published_brt'].dt.round('h')
     # Seleção de colunas
     colunas = ['ds_platform', 'total_interactions', 'nr_reactions', 'nr_shares', 
                 'nr_comments', 'nr_saves', 'nr_views', 'nr_impressions',
@@ -53,8 +97,13 @@ def tratar_redes_sociais(df):
     ).reset_index()
     df_final.columns.name = None
     df_final = df_final.fillna(0)
+
+ 
+    df_final = df_final.groupby('ts_published_brt', as_index=False).sum()
+    df_final = fill_hourly_gaps(df_final, 'ts_published_brt')
     
     return df_final
+
 
 def tratar_globoplay(df):
     """
@@ -62,7 +111,7 @@ def tratar_globoplay(df):
     """
     if df is None:
         return None
-    
+    df = df.copy()
     df.columns = df.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '')
     df = df.dropna()
     df['data'] = pd.to_datetime(df['data'])
@@ -82,19 +131,100 @@ def tratar_globoplay(df):
         for _, row in df.iterrows()
     ], ignore_index=True)
 
+    df_horas = fill_hourly_gaps(df_horas, 'data')
     
     # Adicione aqui o tratamento específico para GloboPlay
     return df_horas
 
+
 def tratar_tv_linear(df):
     """
-    Função específica para tratar os dados de TV Linear.
-    """
-    if df is None:
-        return None
+    Process TV linear data by filtering, formatting, adjusting times and calculating metrics.
     
-    # Adicione aqui o tratamento específico para TV Linear
-    return df
+    Args:
+        df: Input dataframe from 'tv_linear.csv'
+        
+    Returns:
+        DataFrame: Processed dataframe with calculated metrics by hour
+    """
+    
+    # Filter and format columns
+    df = df[df['Targets'] == 'Total Indivíduos'].reset_index(drop=True)
+    df.columns = df.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '').str.replace('[', '').str.replace(']', '')
+    df['duração_prg'] = df['duração_prg'].str.split(':').str[0].astype(int)
+    
+    # Define helper functions for time adjustments
+    def ajustar_horario(time_str):
+        """
+        Adjusts time string for hours ≥ 24 by subtracting 24 and adding a day delta.
+        """
+        h, m, s = map(int, time_str.split(":"))
+        delta = timedelta(days=0)
+        if h >= 24:
+            h -= 24
+            delta = timedelta(days=1)
+        novo_time = f"{h:02d}:{m:02d}:{s:02d}"
+        return delta, novo_time
+
+    def ajustar_data_e_horarios(row):
+        """
+        Adjusts date and times for a row based on program start time.
+        """
+        data_dt = datetime.strptime(row["data"], "%d/%m/%Y")
+        delta_inicio, novo_inicio = ajustar_horario(row["hora_início"])
+        _, novo_fim = ajustar_horario(row["hora_fim"])
+        data_dt += delta_inicio
+        return pd.Series([data_dt.strftime("%d/%m/%Y"), novo_inicio, novo_fim])
+
+    # Apply time adjustments
+    df[["data", "hora_início", "hora_fim"]] = df.apply(ajustar_data_e_horarios, axis=1)
+    
+    # Filter by level
+    df = df[df['nível'] == 'Nível 1'].reset_index(drop=True)
+    
+    # Convert start and end times to datetime
+    df['start'] = df['data'] + ' ' + df['hora_início']
+    df['end'] = df['data'] + ' ' + df['hora_fim']
+    df['start'] = pd.to_datetime(df['start'], format='%d/%m/%Y %H:%M:%S')
+    df['end'] = pd.to_datetime(df['end'], format='%d/%m/%Y %H:%M:%S')
+    
+    # Define metrics to process
+    metrics = ['rat#', 'rat%', 'shr%', 'tvr%', 'tvr#', 'avrch%_wavg', 'cov%', 'fid%_org']
+    result_rows = []
+    
+    # Process each row by hourly segments
+    for _, row in df.iterrows():
+        start = row['start']
+        end = row['end']
+        duration = row['duração_prg']
+                
+        current_hour = start.floor('h')
+        end_hour = end.ceil('h')
+        
+        while current_hour < end_hour:
+            next_hour = current_hour + pd.Timedelta(hours=1)
+            overlap_start = max(start, current_hour)
+            overlap_end = min(end, next_hour)
+            overlap_min = (overlap_end - overlap_start).total_seconds() / 60
+            
+            if overlap_min > 0:
+                proportion = overlap_min / duration
+                data_hora = current_hour
+                result_row = {'data_hora': data_hora}
+                for metric in metrics:
+                    result_row[metric] = row[metric] * proportion
+                result_rows.append(result_row)
+            
+            current_hour = next_hour
+    
+    # Create and aggregate final dataframe
+    result_df = pd.DataFrame(result_rows)
+    if not result_df.empty:
+        result_df = result_df.groupby('data_hora', as_index=False).sum()
+        result_df = fill_hourly_gaps(result_df, 'data_hora')
+    
+    return result_df
+
 
 def carregar_e_tratar_dados():
     """
@@ -148,22 +278,77 @@ def carregar_e_tratar_dados():
     
     return df_redes_sociais, df_globoplay, df_tv_linear
 
-def merge_data(df_redes_sociais, df_globoplay):
 
-
+def merge_data(df_redes_sociais, df_globoplay, df_tv_linear):
+    """
+    Merge data from social media, Globoplay, and linear TV, keeping only data points
+    that exist in all three dataframes, with appropriate prefixes for each source.
+    
+    Args:
+        df_redes_sociais: Processed social media dataframe
+        df_globoplay: Processed Globoplay dataframe
+        df_tv_linear: Processed linear TV dataframe
+        
+    Returns:
+        DataFrame: Merged dataframe containing only overlapping time periods with prefixed columns
+    """
+    # Check if all dataframes exist
+    if df_redes_sociais is None or df_globoplay is None or df_tv_linear is None:
+        return None
+    
+    # Round timestamps to the nearest hour for consistent merging
     df_redes_sociais['ts_published_brt'] = df_redes_sociais['ts_published_brt'].dt.round('h')
     df_globoplay['data'] = df_globoplay['data'].dt.round('h')
-
+    # TV Linear already has data_hora at hourly intervals from your processing function
+    
+    # Rename timestamp columns for consistency
+    df_redes = df_redes_sociais.rename(columns={'ts_published_brt': 'data_hora'})
+    df_globo = df_globoplay.rename(columns={'data': 'data_hora'})
+    # df_tv_linear already has 'data_hora' as column name
+    
+    # Add prefixes to column names except for 'data_hora'
+    # 1. For tv_linear dataframe add TVGLOBO_ prefix
+    prefix_columns = {col: f'TVGLOBO_{col}' for col in df_tv_linear.columns if col != 'data_hora'}
+    df_tv_linear = df_tv_linear.rename(columns=prefix_columns)
+    
+    # 2. For redes_sociais add RS_ prefix
+    prefix_columns = {col: f'RS_{col}' for col in df_redes.columns if col != 'data_hora'}
+    df_redes = df_redes.rename(columns=prefix_columns)
+    
+    # 3. For globoplay add GP_ prefix
+    prefix_columns = {col: f'GP_{col}' for col in df_globo.columns if col != 'data_hora'}
+    df_globo = df_globo.rename(columns=prefix_columns)
+    
+    # Perform inner merge to keep only data present in all three dataframes
     df_merged = pd.merge(
-        df_redes_sociais.rename(columns={'ts_published_brt': 'data_hora'}),
-        df_globoplay.rename(columns={'data': 'data_hora'}),
+        df_redes,
+        df_globo,
         on='data_hora',
-        how='outer'
-    ).fillna(0)
-
+        how='inner'
+    )
+    
+    # Merge with TV linear data
+    df_merged = pd.merge(
+        df_merged,
+        df_tv_linear,
+        on='data_hora',
+        how='inner'  # Using inner join to keep only common timestamps
+    )
+    
+    # Aggregate by hour if needed (in case there are duplicate entries)
     df_merged = df_merged.groupby('data_hora', as_index=False).sum()
 
+    # Replace None with np.nan (if any)
+    df_merged = df_merged.replace({None: np.nan})
+
+    # Drop rows that are 100% 0's (or NaN's)
+    df_merged = df_merged[~(df_merged.fillna(0) == 0).all(axis=1)]
+
+    # Drop columns that are 100% 0's (or NaN's)
+    df_merged = df_merged.loc[:, ~(df_merged.fillna(0) == 0).all(axis=0)]
+    
     return df_merged
+
 
 def convert_non_numeric_to_codes(df):
     """
@@ -175,52 +360,6 @@ def convert_non_numeric_to_codes(df):
             df_copy[col] = df_copy[col].astype('category').cat.codes
     return df_copy
 
-def filter_and_group_by_date(df, date_column, group_option, date_range=None):
-    """
-    Filtra o DataFrame com base em um intervalo de datas e agrupa os dados por uma granularidade específica.
-    
-    Args:
-        df (DataFrame): DataFrame original.
-        date_column (str): Nome da coluna com informações de data.
-        group_option (str): Opção de agrupamento ("Data e hora", "Data", "Semana", "Mês", "Quarter", "Ano").
-        date_range (list/tuple): Intervalo de datas [start_date, end_date] para filtrar o DataFrame.
-    
-    Returns:
-        DataFrame: DataFrame filtrado e agrupado.
-    """
-    df = df.copy()
-    try:
-        df[date_column] = pd.to_datetime(df[date_column])
-    except Exception as e:
-        st.error(f"Erro ao converter '{date_column}' para datetime: {e}")
-        return df
-
-    if date_range and isinstance(date_range, (list, tuple)) and len(date_range) == 2:
-        start_date, end_date = date_range
-        df = df[(df[date_column].dt.date >= start_date) & (df[date_column].dt.date <= end_date)]
-    
-    group_map = {
-        "Data e hora": None,
-        "Data": "D",
-        "Semana": "W",
-        "Mês": "ME",
-        "Quarter": "QE",
-        "Ano": "YE"
-    }
-    freq = group_map.get(group_option)
-    if freq is not None:
-        df = df.groupby(pd.Grouper(key=date_column, freq=freq)).mean().reset_index()
-        if group_option == "Data":
-            df[date_column] = df[date_column].dt.strftime('%Y-%m-%d')
-        elif group_option == "Semana":
-            df[date_column] = df[date_column].dt.strftime('%Y-W%U')
-        elif group_option == "Mês":
-            df[date_column] = df[date_column].dt.strftime('%Y-%m')
-        elif group_option == "Quarter":
-            df[date_column] = df[date_column].dt.to_period('Q').astype(str)
-        elif group_option == "Ano":
-            df[date_column] = df[date_column].dt.year.astype(str)
-    return df
 
 def calculate_correlation_series(df, target):
     """

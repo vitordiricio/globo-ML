@@ -4,8 +4,6 @@ import numpy as np
 import plotly.express as px
 import matplotlib.pyplot as plt
 
-import base64
-from pathlib import Path
 
 from utils.model_evaluation import ModelEvaluator
 from utils.config_page import configurar_pagina, mostrar_cabecalho
@@ -14,7 +12,8 @@ from utils.graphs_views import (
     mostrar_metricas, 
     plot_previsoes_vs_reais, 
     plot_heatmap_correlation_total, 
-    cria_dataframe_correlacao_com_target
+    cria_dataframe_correlacao_com_target,
+    plot_feature_importance
 )
 from utils.ml_models import AVAILABLE_MODELS
 
@@ -53,12 +52,8 @@ def main():
     if page == "Home":
         st.title("Home")
         
-        if df_redes_sociais is not None and df_globoplay is not None:
-            df_redes_sociais.to_csv('redes_sociais_tratado.csv', index=False)
-            df_globoplay.to_csv('globoplay_tratado.csv', index=False)
-            df_merged = merge_data(df_redes_sociais, df_globoplay)
-            st.subheader("Pré-visualização dos Dados de Redes Sociais")
-            st.dataframe(df_redes_sociais, hide_index=True, height=250)
+        if df_redes_sociais is not None and df_globoplay is not None and df_tv_linear is not None:
+            df_merged = merge_data(df_redes_sociais, df_globoplay, df_tv_linear)
 
             st.subheader("Pré-visualização dos Dados juntos")
             st.dataframe(df_merged, hide_index=True, height=250)
@@ -72,8 +67,8 @@ def main():
             
             st.subheader("Seleção de Variáveis")
             colunas_model = df_model.columns.tolist()
-            if 'ts_published_brt' in colunas_model:
-                colunas_model.remove('ts_published_brt')
+            if 'data_hora' in colunas_model:
+                colunas_model.remove('data_hora')
             col_y, col_x = st.columns(2)
             with col_y:
                 alvo = st.selectbox(
@@ -149,19 +144,9 @@ def main():
                                 importancia = modelo.feature_importances_
                             else:
                                 importancia = np.abs(modelo.coef_)
+
+                            plot_feature_importance(st.session_state.features_used, importancia)
                                 
-                            df_importancia = pd.DataFrame({
-                                'Variável': st.session_state.features_used,
-                                'Importância': importancia
-                            }).sort_values('Importância', ascending=True)
-                            
-                            fig = px.bar(
-                                df_importancia,
-                                x='Importância',
-                                y='Variável',
-                                orientation='h'
-                            )
-                            st.plotly_chart(fig, use_container_width=True)
                 
                 with abas[-1]:
                     st.markdown("""

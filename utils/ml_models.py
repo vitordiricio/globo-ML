@@ -68,7 +68,7 @@ class LinearRegressionModel(BaseModel):
     - Previsões simples e interpretáveis
     - Identificar força de impacto das variáveis
     """
-    default_params = {'normalize_data': False}
+    default_params = {'normalize_data': True}
 
     def __init__(self, normalize_data=None):
         super().__init__()
