@@ -16,11 +16,43 @@ from utils.graphs_views import (
     plot_feature_importance
 )
 from utils.ml_models import AVAILABLE_MODELS
+from utils.google_drive import get_drive_service
 
 from utils.analises_estaticas import analise_redes_sociais
 
+
+
+def initialize_google_drive():
+    """
+    Initialize Google Drive service at application startup
+    """
+    with st.sidebar.expander("Google Drive Login", expanded="google_drive_service" not in st.session_state):
+        if "google_drive_service" not in st.session_state:
+            st.write("Para acessar arquivos do Google Drive, faça login:")
+            service = get_drive_service("main")
+            if service:
+                st.session_state.google_drive_service = service
+                st.success("Conectado ao Google Drive com sucesso!")
+            else:
+                st.info("Por favor, complete a autenticação para acessar o Google Drive")
+
+
 def main():
     configurar_pagina()
+    # Debug section to see if auth code is being detected
+    if 'auth_code_detected' in st.session_state:
+        with st.expander("Debug Information (only visible during development)"):
+            st.write("Auth code detected:", st.session_state.auth_code_detected)
+            
+    if 'query_params_debug' in st.session_state:
+        with st.expander("Query Parameters"):
+            st.write(st.session_state.query_params_debug)
+
+    # Check query parameters directly
+    st.write(f"Current query parameters: {st.query_params}")
+    # Inicializar conexão com Google Drive
+    initialize_google_drive()
+    
     mostrar_cabecalho()
 
     col1, col2 = st.sidebar.columns(2, vertical_alignment='center', gap='large')
@@ -204,7 +236,7 @@ def main():
                     else:
                         st.info("Treine pelo menos um modelo para ver a comparação.")
         else:
-            st.info("Por favor, faça o upload dos dados para prosseguir.")
+            st.info("Por favor, selecione os arquivos do Google Drive para prosseguir.")
     
     # Página de Análise de Redes Sociais
     elif page == "Análise de Redes Sociais":
@@ -212,7 +244,7 @@ def main():
         if df_redes_sociais is not None:
             analise_redes_sociais(df_redes_sociais)
         else:
-            st.warning("Por favor, faça o upload dos dados de redes sociais na Home primeiro.")
+            st.warning("Por favor, selecione o arquivo de redes sociais na Home primeiro.")
     
     st.markdown("---\nFeito com ❤️ FCamara | Value Creation | Sales Boost")
 

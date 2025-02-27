@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime, timedelta
 import numpy as np
+from utils.google_drive import select_csv_from_drive
 
 def fill_hourly_gaps(df, datetime_column):
     """
@@ -154,7 +155,7 @@ def tratar_tv_linear(df):
     df['hora_inicio'] = df['faixas_horárias'].str.split(' - ').str[0].apply(lambda x: f"{int(x.split(':')[0]) % 24:02d}:{x.split(':')[1]}")
     df['data_hora'] = pd.to_datetime(df['datas'] + ' ' + df['hora_inicio'], format='%d/%m/%Y %H:%M')
     df = df[['data_hora','emissoras', 'rat%', 'shr%', 'tvr%', 'rat#', 'avrch%_wavg', 'cov%', 'fid%_org', 'tvr#']]
-    df['emissoras'] = df['emissoras'].str.replace('‘', '').str.replace('’', '').str.replace(' - ', ' ').str.replace('é', 'e').str.replace(' ', '_')
+    df['emissoras'] = df['emissoras'].str.replace(''', '').str.replace(''', '').str.replace(' - ', ' ').str.replace('é', 'e').str.replace(' ', '_')
 
     # Transformação para formato wide
     df_melted = df.melt(
@@ -178,53 +179,56 @@ def tratar_tv_linear(df):
 
 def carregar_e_tratar_dados():
     """
-    Função principal que carrega e trata todos os dados.
+    Função principal que carrega e trata todos os dados usando o Google Drive.
     Returns:
         tuple: DataFrames tratados (redes_sociais, globoplay, tv_linear)
     """
-    st.subheader("Upload dos dados")
+    st.subheader("Selecione os arquivos do Google Drive")
     
     # Criar três colunas
     col1, col2, col3 = st.columns(3)
     
     # Primeira coluna - Redes Sociais
     with col1:
-        st.text("CSV de redes sociais:")
-        arquivo_redes_sociais = st.file_uploader("", type=['csv'], key='upload1')
+        # Redes Sociais
+        df_redes_sociais_raw = select_csv_from_drive("Arquivo de Redes Sociais", key="redes_sociais")
         df_redes_sociais = None
-        if arquivo_redes_sociais is not None:
+        
+        if df_redes_sociais_raw is not None:
             try:
-                df_redes_sociais = pd.read_csv(arquivo_redes_sociais)
-                df_redes_sociais = tratar_redes_sociais(df_redes_sociais)
+                with st.spinner("Processando dados de redes sociais..."):
+                    df_redes_sociais = tratar_redes_sociais(df_redes_sociais_raw)
                 st.success("Arquivo de redes sociais processado!")
             except Exception as e:
-                st.error(f"Erro ao processar arquivo: {str(e)}")
+                st.error(f"Erro ao processar arquivo de redes sociais: {str(e)}")
     
     # Segunda coluna - GloboPlay
     with col2:
-        st.text("CSV de GloboPlay:")
-        arquivo_globoplay = st.file_uploader("", type=['csv'], key='upload2')
+        # GloboPlay
+        df_globoplay_raw = select_csv_from_drive("Arquivo do GloboPlay", key="globoplay")
         df_globoplay = None
-        if arquivo_globoplay is not None:
+        
+        if df_globoplay_raw is not None:
             try:
-                df_globoplay = pd.read_csv(arquivo_globoplay)
-                df_globoplay = tratar_globoplay(df_globoplay)
+                with st.spinner("Processando dados do GloboPlay..."):
+                    df_globoplay = tratar_globoplay(df_globoplay_raw)
                 st.success("Arquivo do GloboPlay processado!")
             except Exception as e:
-                st.error(f"Erro ao processar arquivo: {str(e)}")
+                st.error(f"Erro ao processar arquivo do GloboPlay: {str(e)}")
     
     # Terceira coluna - TV Linear
     with col3:
-        st.text("CSV de TV Linear:")
-        arquivo_tv_linear = st.file_uploader("", type=['csv'], key='upload3')
+        # TV Linear
+        df_tv_linear_raw = select_csv_from_drive("Arquivo de TV Linear", key="tv_linear")
         df_tv_linear = None
-        if arquivo_tv_linear is not None:
+        
+        if df_tv_linear_raw is not None:
             try:
-                df_tv_linear = pd.read_csv(arquivo_tv_linear)
-                df_tv_linear = tratar_tv_linear(df_tv_linear)
+                with st.spinner("Processando dados de TV Linear..."):
+                    df_tv_linear = tratar_tv_linear(df_tv_linear_raw)
                 st.success("Arquivo de TV Linear processado!")
             except Exception as e:
-                st.error(f"Erro ao processar arquivo: {str(e)}")
+                st.error(f"Erro ao processar arquivo de TV Linear: {str(e)}")
     
     return df_redes_sociais, df_globoplay, df_tv_linear
 
