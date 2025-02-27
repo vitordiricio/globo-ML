@@ -149,79 +149,29 @@ def tratar_tv_linear(df):
     """
     
     # Filter and format columns
-    df = df[df['Targets'] == 'Total Indivíduos'].reset_index(drop=True)
+    df = df.copy()
     df.columns = df.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '').str.replace('[', '').str.replace(']', '')
-    df['duração_prg'] = df['duração_prg'].str.split(':').str[0].astype(int)
-    
-    # Define helper functions for time adjustments
-    def ajustar_horario(time_str):
-        """
-        Adjusts time string for hours ≥ 24 by subtracting 24 and adding a day delta.
-        """
-        h, m, s = map(int, time_str.split(":"))
-        delta = timedelta(days=0)
-        if h >= 24:
-            h -= 24
-            delta = timedelta(days=1)
-        novo_time = f"{h:02d}:{m:02d}:{s:02d}"
-        return delta, novo_time
+    df['hora_inicio'] = df['faixas_horárias'].str.split(' - ').str[0].apply(lambda x: f"{int(x.split(':')[0]) % 24:02d}:{x.split(':')[1]}")
+    df['data_hora'] = pd.to_datetime(df['datas'] + ' ' + df['hora_inicio'], format='%d/%m/%Y %H:%M')
+    df = df[['data_hora','emissoras', 'rat%', 'shr%', 'tvr%', 'rat#', 'avrch%_wavg', 'cov%', 'fid%_org', 'tvr#']]
+    df['emissoras'] = df['emissoras'].str.replace('‘', '').str.replace('’', '').str.replace(' - ', ' ').str.replace('é', 'e').str.replace(' ', '_')
 
-    def ajustar_data_e_horarios(row):
-        """
-        Adjusts date and times for a row based on program start time.
-        """
-        data_dt = datetime.strptime(row["data"], "%d/%m/%Y")
-        delta_inicio, novo_inicio = ajustar_horario(row["hora_início"])
-        _, novo_fim = ajustar_horario(row["hora_fim"])
-        data_dt += delta_inicio
-        return pd.Series([data_dt.strftime("%d/%m/%Y"), novo_inicio, novo_fim])
+    # Transformação para formato wide
+    df_melted = df.melt(
+        id_vars=["emissoras", "data_hora"], 
+        var_name="metrica", 
+        value_name="valor"
+    )
+    df_melted["nova_coluna"] = df_melted["emissoras"] + "_" + df_melted["metrica"]
 
-    # Apply time adjustments
-    df[["data", "hora_início", "hora_fim"]] = df.apply(ajustar_data_e_horarios, axis=1)
-    
-    # Filter by level
-    df = df[df['nível'] == 'Nível 1'].reset_index(drop=True)
-    
-    # Convert start and end times to datetime
-    df['start'] = df['data'] + ' ' + df['hora_início']
-    df['end'] = df['data'] + ' ' + df['hora_fim']
-    df['start'] = pd.to_datetime(df['start'], format='%d/%m/%Y %H:%M:%S')
-    df['end'] = pd.to_datetime(df['end'], format='%d/%m/%Y %H:%M:%S')
-    
-    # Define metrics to process
-    metrics = ['rat#', 'rat%', 'shr%', 'tvr%', 'tvr#', 'avrch%_wavg', 'cov%', 'fid%_org']
-    result_rows = []
-    
-    # Process each row by hourly segments
-    for _, row in df.iterrows():
-        start = row['start']
-        end = row['end']
-        duration = row['duração_prg']
-                
-        current_hour = start.floor('h')
-        end_hour = end.ceil('h')
-        
-        while current_hour < end_hour:
-            next_hour = current_hour + pd.Timedelta(hours=1)
-            overlap_start = max(start, current_hour)
-            overlap_end = min(end, next_hour)
-            overlap_min = (overlap_end - overlap_start).total_seconds() / 60
-            
-            if overlap_min > 0:
-                proportion = overlap_min / duration
-                data_hora = current_hour
-                result_row = {'data_hora': data_hora}
-                for metric in metrics:
-                    result_row[metric] = row[metric] * proportion
-                result_rows.append(result_row)
-            
-            current_hour = next_hour
-    
-    # Create and aggregate final dataframe
-    result_df = pd.DataFrame(result_rows)
-    if not result_df.empty:
-        result_df = result_df.groupby('data_hora', as_index=False).sum()
-        result_df = fill_hourly_gaps(result_df, 'data_hora')
+    # Pivot e limpeza final
+    result_df = df_melted.pivot(
+        index="data_hora", 
+        columns="nova_coluna", 
+        values="valor"
+    ).reset_index()
+    result_df.columns.name = None
+    result_df = result_df.fillna(0)
     
     return result_df
 
@@ -308,7 +258,7 @@ def merge_data(df_redes_sociais, df_globoplay, df_tv_linear):
     
     # Add prefixes to column names except for 'data_hora'
     # 1. For tv_linear dataframe add TVGLOBO_ prefix
-    prefix_columns = {col: f'TVGLOBO_{col}' for col in df_tv_linear.columns if col != 'data_hora'}
+    prefix_columns = {col: f'LINEAR_{col}' for col in df_tv_linear.columns if col != 'data_hora'}
     df_tv_linear = df_tv_linear.rename(columns=prefix_columns)
     
     # 2. For redes_sociais add RS_ prefix

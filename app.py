@@ -69,19 +69,43 @@ def main():
             colunas_model = df_model.columns.tolist()
             if 'data_hora' in colunas_model:
                 colunas_model.remove('data_hora')
+
+            # Initialize session state for storing selections
+            if 'previous_alvo' not in st.session_state:
+                st.session_state.previous_alvo = None
+            if 'selected_features' not in st.session_state:
+                st.session_state.selected_features = []
+
             col_y, col_x = st.columns(2)
             with col_y:
                 alvo = st.selectbox(
                     "Selecione a variável que deseja prever (Y):",
-                    options=colunas_model
+                    options=colunas_model,
+                    key="alvo_selectbox"
                 )
+                
+                # Check if Y changed and update the X variables accordingly
+                if st.session_state.previous_alvo != alvo:
+                    # If Y changed, we need to update our X options
+                    # But we want to preserve the selection when possible
+                    previous_features = st.session_state.selected_features
+                    
+                    # Filter out the new Y variable from the previous selections
+                    updated_features = [feat for feat in previous_features if feat != alvo and feat != "Selecionar todas as colunas"]
+                    st.session_state.selected_features = updated_features
+                    st.session_state.previous_alvo = alvo
+                    
             with col_x:
                 opcoes_features = ["Selecionar todas as colunas"] + [col for col in df_model.columns if col not in ['ts_published_brt', alvo]]
                 selecionadas = st.multiselect(
                     "Selecione as variáveis explicativas (X):",
                     options=opcoes_features,
+                    default=st.session_state.selected_features,
                     help="Selecione as features desejadas. Se escolher 'Selecionar todas as colunas', todas as colunas serão usadas."
                 )
+                
+                # Update the session state with the current selection
+                st.session_state.selected_features = selecionadas
             
             cria_dataframe_correlacao_com_target(df_model, alvo)
             

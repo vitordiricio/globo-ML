@@ -88,8 +88,6 @@ def plot_heatmap_correlation_total(df):
     )
     st.plotly_chart(fig_corr_full, use_container_width=True)
 
-
-
 def mostrar_metricas(y_test, y_pred):
     """
     Calcula e exibe as métricas R², MSE e RMSE usando Streamlit.
