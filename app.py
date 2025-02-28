@@ -15,6 +15,7 @@ from utils.graphs_views import (
     cria_dataframe_correlacao_com_target,
     plot_feature_importance
 )
+from utils.external_data import fetch_all_bcb_economic_indicators
 from utils.ml_models import AVAILABLE_MODELS
 
 from utils.analises_estaticas import analise_redes_sociais
@@ -44,7 +45,7 @@ def main():
     page = st.sidebar.radio("Selecione a página", menu_options)
     
     # --- Carregamento dos dados ---
-    df_redes_sociais, df_globoplay, df_tv_linear = carregar_e_tratar_dados()
+    df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear = carregar_e_tratar_dados()
 
     
     
@@ -52,8 +53,12 @@ def main():
     if page == "Home":
         st.title("Home")
         
-        if df_redes_sociais is not None and df_globoplay is not None and df_tv_linear is not None:
-            df_merged = merge_data(df_redes_sociais, df_globoplay, df_tv_linear)
+        if df_redes_sociais is not None and df_redes_sociais_canais is not None and df_globoplay is not None and df_tv_linear is not None:
+            df_merged = merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear)
+            max_date = df_merged['data_hora'].max().strftime('%d/%m/%Y')
+            min_date = df_merged['data_hora'].min().strftime('%d/%m/%Y')
+            df_merged = fetch_all_bcb_economic_indicators(df_merged, 'data_hora', min_date, max_date)
+
 
             st.subheader("Pré-visualização dos Dados juntos")
             st.dataframe(df_merged, hide_index=True, height=250)

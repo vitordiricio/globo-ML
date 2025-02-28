@@ -1,0 +1,397 @@
+data_hora;hora_inicio;hora_fim;partida;evento;nacional_x_nacional;transimissores;globo_transmitiu;soh_concorrentes_transimitiram
+04/04/2023 19:00;19:00;21:00:00;Independiente Medell�n (COL) x Internacional;Libertadores;0;Paramount+;0;1
+04/04/2023 19:00;19:00;21:00:00;Alianza Lima (PER) x Athletico-PR;Libertadores;0;ESPN, Star+;0;1
+04/04/2023 19:00;19:00;21:00:00;Argentinos Juniors (ARG) x Independiente del Valle (EQU);Libertadores;0;Paramount+;0;1
+04/04/2023 23:00;23:00;01:00:00;Metropolitanos (VEN) x Nacional (URU);Libertadores;0;ESPN, Star+;0;1
+05/04/2023 19:00;19:00;21:00:00;Aucas (EQU) x Flamengo;Libertadores;0;ESPN, Star+;0;1
+05/04/2023 21:00;21:00;23:00:00;�ublense (CHI) x Racing (ARG);Libertadores;0;Paramount+;0;1
+05/04/2023 21:00;21:00;23:00:00;Cerro Porte�o (PAR) x Barcelona (EQU);Libertadores;0;ESPN, Star+;0;1
+06/04/2023 19:00;19:00;21:00:00;Liverpool (URU) x Corinthians;Libertadores;0;Paramount+;0;1
+06/04/2023 19:00;19:00;21:00:00;Atl�tico-MG x Libertad (PAR);Libertadores;0;ESPN, Star+;0;1
+18/04/2023 19:00;19:00;21:00:00;Internacional x Metropolitanos (VEN);Libertadores;0;Paramount+;0;1
+18/04/2023 21:00;21:00;23:00:00;Athletico-PR x Atl�tico-MG;Libertadores;1;ESPN, Star+;0;1
+18/04/2023 23:00;23:00;01:00:00;Independiente del Valle (EQU) x Liverpool (URU);Libertadores;0;ESPN, Star+;0;1
+19/04/2023 19:00;19:00;21:00:00;Nacional (URU) x Independiente Medell�n (COL);Libertadores;0;Paramount+;0;1
+19/04/2023 21:00;21:00;23:00:00;River Plate (ARG) x Sporting Cristal (PER);Libertadores;0;ESPN, Star+;0;1
+19/04/2023 23:00;23:00;01:00:00;Barcelona (EQU) x Bol�var (BOL);Libertadores;0;ESPN, Star+;0;1
+20/04/2023 19:00;19:00;21:00:00;Racing (ARG) x Aucas (EQU);Libertadores;0;ESPN, Star+;0;1
+20/04/2023 21:00;21:00;23:00:00;Palmeiras x Cerro Porte�o (PAR);Libertadores;0;ESPN, Star+;0;1
+20/04/2023 23:00;23:00;01:00:00;Libertad (PAR) x Alianza Lima (PER);Libertadores;0;Paramount+;0;1
+02/05/2023 19:00;19:00;21:00:00;�ublense (CHI) x Aucas (EQU);Libertadores;0;Paramount+;0;1
+02/05/2023 19:00;19:00;21:00:00;Liverpool (URU) x Argentinos Juniors (ARG);Libertadores;0;ESPN, Star+;0;1
+02/05/2023 21:00;21:00;23:00:00;Corinthians x Independiente del Valle (EQU);Libertadores;0;Paramount+;0;1
+02/05/2023 21:00;21:00;23:00:00;Fluminense x River Plate (ARG);Libertadores;0;ESPN, Star+;0;1
+02/05/2023 23:00;23:00;01:00:00;Sporting Cristal (PER) x The Strongest (BOL);Libertadores;0;ESPN, Star+;0;1
+03/05/2023 19:00;19:00;21:00:00;Cerro Porte�o (PAR) x Bol�var (BOL);Libertadores;0;ESPN, Star+;0;1
+03/05/2023 19:00;19:00;21:00:00;Internacional x Nacional (URU);Libertadores;0;Paramount+;0;1
+03/05/2023 23:00;23:00;01:00:00;Independiente Medell�n (COL) x Metropolitanos (VEN);Libertadores;0;Paramount+;0;1
+04/05/2023 19:00;19:00;21:00:00;Racing (ARG) x Flamengo;Libertadores;0;ESPN, Star+;0;1
+04/05/2023 21:00;21:00;23:00:00;Libertad (PAR) x Athletico-PR;Libertadores;0;ESPN, Star+;0;1
+23/05/2023 21:00;21:00;23:00:00;Aucas (EQU) x Racing (ARG);Libertadores;0;ESPN, Star+;0;1
+23/05/2023 21:00;21:00;23:00:00;Independiente Medell�n (COL) x Nacional (URU);Libertadores;0;Paramount+;0;1
+23/05/2023 23:00;23:00;01:00:00;Alianza Lima (PER) x Libertad (PAR);Libertadores;0;Paramount+;0;1
+24/05/2023 19:00;19:00;21:00:00;Liverpool (URU) x Independiente del Valle (EQU);Libertadores;0;ESPN, Star+;0;1
+25/05/2023 19:00;19:00;21:00:00;The Strongest (BOL) x Fluminense;Libertadores;0;ESPN, Star+;0;1
+25/05/2023 21:00;21:00;23:00:00;Sporting Cristal (PER) x River Plate (ARG);Libertadores;0;Paramount+;0;1
+25/05/2023 21:00;21:00;23:00:00;Metropolitanos (VEN) x Internacional;Libertadores;0;Paramount+;0;1
+25/05/2023 21:00;21:00;23:00:00;Cerro Porte�o (PAR) x Palmeiras;Libertadores;0;ESPN, Star+;0;1
+06/06/2023 19:00;19:00;21:00:00;Athletico-PR x Libertad (PAR);Libertadores;0;ESPN, Star+;0;1
+06/06/2023 19:00;19:00;21:00:00;Argentinos Juniors (ARG) x Liverpool (URU);Libertadores;0;ESPN, Star+;0;1
+06/06/2023 21:00;21:00;23:00:00;Alianza Lima (PER) x Atl�tico-MG;Libertadores;0;ESPN, Star+;0;1
+06/06/2023 23:00;23:00;01:00:00;Bol�var (BOL) x Cerro Porte�o (PAR);Libertadores;0;ESPN, Star+;0;1
+07/06/2023 19:00;19:00;21:00:00;Nacional (URU) x Internacional;Libertadores;0;Paramount+;0;1
+07/06/2023 21:00;21:00;23:00:00;Aucas (EQU) x �ublense (CHI);Libertadores;0;Paramount+;0;1
+07/06/2023 23:00;23:00;01:00:00;The Strongest (BOL) x Sporting Cristal (PER);Libertadores;0;Paramount+;0;1
+08/06/2023 19:00;19:00;21:00:00;Metropolitanos (VEN) x Independiente Medell�n (COL);Libertadores;0;ESPN, Star+;0;1
+08/06/2023 19:00;19:00;21:00:00;Independiente del Valle (EQU) x Corinthians;Libertadores;0;Paramount+;0;1
+27/06/2023 19:00;19:00;21:00:00;Athletico-PR x Alianza Lima (PER);Libertadores;0;ESPN, Star+;0;1
+27/06/2023 19:00;19:00;21:00:00;Libertad (PAR) x Atl�tico-MG;Libertadores;0;ESPN, Star+;0;1
+27/06/2023 21:00;21:00;23:00:00;Fluminense x Sporting Cristal (PER);Libertadores;0;Paramount+;0;1
+27/06/2023 21:00;21:00;23:00:00;River Plate (ARG) x The Strongest (BOL);Libertadores;0;ESPN, Star+;0;1
+28/06/2023 19:00;19:00;21:00:00;Internacional x Independiente Medell�n (COL);Libertadores;0;Paramount+;0;1
+28/06/2023 19:00;19:00;21:00:00;Nacional (URU) x Metropolitanos (VEN);Libertadores;0;ESPN, Star+;0;1
+28/06/2023 21:30;21:30;23:30:00;Racing (ARG) x �ublense (CHI);Libertadores;0;Paramount+;0;1
+28/07/2023 21:30;21:30;23:30:00;Independiente del Valle (EQU) x Argentinos Juniors (ARG);Libertadores;0;Paramount+;0;1
+22/08/2023 19:00;19:00;21:00:00;Bol�var x Internacional;Libertadores;0;ESPN, Star+;0;1
+23/08/2023 21:30;21:30;23:30:00;Boca Juniors x Racing;Libertadores;0;ESPN, Star+;0;1
+29/08/2023 19:00;19:00;21:00:00;Internacional x Bol�var;Libertadores;0;ESPN, Star+;0;1
+30/08/2023 21:30;21:30;23:30:00;Racing x Boca Juniors;Libertadores;0;ESPN, Star+;0;1
+02/04/2024 19:00;19:00;21:00:00;Cobresal 0 x 1 Barcelona-EQU;Libertadores;0;Paramount+;0;1
+02/04/2024 19:00;19:00;21:00:00;Millonarios 1 x 1 Flamengo;Libertadores;0;ESPN, Star+;0;1
+02/04/2024 19:00;19:00;21:00:00;Liverpool-URU 1 x 1 Independiente Del Valle;Libertadores;0;Paramount+;0;1
+02/04/2024 21:00;21:00;23:00:00;The Strongest 1 x 2 Gr�mio;Libertadores;0;Paramount+;0;1
+02/04/2024 21:00;21:00;23:00:00;Deportivo T�chira 0 x 1 River Plate;Libertadores;0;Paramount+;0;1
+02/04/2024 23:00;23:00;01:00:00;Universitario 1 x 1 LDU;Libertadores;0;ESPN, Star+;0;1
+03/04/2024 19:00;19:00;21:00:00;Huachipato 0 x 1 Estudiantes;Libertadores;0;Paramount+;0;1
+03/04/2024 19:00;19:00;21:00:00;Nacional-URU 1 x 1 Libertad;Libertadores;0;Paramount+;0;1
+03/04/2024 19:00;19:00;21:00:00;Botafogo 2 x 0 Junior Barranquilla;Libertadores;0;ESPN, Star+;0;1
+03/04/2024 21:00;21:00;23:00:00;Colo-Colo 1 x 1 Cerro Porte�o;Libertadores;0;ESPN, Star+;0;1
+04/04/2024 19:00;19:00;21:00:00;Caracas 0 x 1 Atl�tico-MG;Libertadores;0;ESPN, Star+;0;1
+04/04/2024 19:00;19:00;21:00:00;Rosario Central 1 x 1 Pe�arol;Libertadores;0;ESPN, Star+;0;1
+04/04/2024 21:00;21:00;23:00:00;Palestino 0 x 1 Bol�var;Libertadores;0;ESPN, Star+;0;1
+04/04/2024 21:00;21:00;23:00:00;Talleres 1 x 2 S�o Paulo;Libertadores;0;Paramount+;0;1
+09/04/2024 19:00;19:00;21:00:00;Gr�mio 2 x 0 Huachipato;Libertadores;0;Paramount+;0;1
+09/04/2024 19:00;19:00;21:00:00;Estudiantes 1 x 0 The Strongest;Libertadores;0;ESPN, Star+;0;1
+09/04/2024 21:00;21:00;23:00:00;Fluminense 2 x 1 Colo-Colo;Libertadores;0;Paramount+;0;1
+09/04/2024 21:00;21:00;23:00:00;Barcelona-EQU 1 x 1 Talleres;Libertadores;0;Paramount+;0;1
+10/04/2024 19:00;19:00;21:00:00;Cerro Porte�o 1 x 0 Alianza Lima;Libertadores;0;ESPN, Star+;0;1
+10/04/2024 19:00;19:00;21:00:00;Atl�tico-MG 2 x 0 Rosario Central;Libertadores;0;ESPN, Star+;0;1
+10/04/2024 21:00;21:00;23:00:00;Pe�arol 1 x 0 Caracas;Libertadores;0;Paramount+;0;1
+11/04/2024 19:00;19:00;21:00:00;Bol�var 1 x 0 Millonarios;Libertadores;0;Paramount+;0;1
+11/04/2024 19:00;19:00;21:00:00;LDU 1 x 1 Botafogo;Libertadores;0;ESPN, Star+;0;1
+11/04/2024 21:00;21:00;23:00:00;Palmeiras 2 x 0 Liverpool-URU;Libertadores;0;ESPN, Star+;0;1
+11/04/2024 21:00;21:00;23:00:00;River Plate 2 x 0 Nacional-URU;Libertadores;0;Paramount+;0;1
+03/04/2024 19:00;19:00;21:00:00;Estudiantes 1 x 1 Gr�mio;Libertadores;0;INDEFINIDO;0;1
+23/04/2024 19:00;19:00;21:00:00;Caracas 1 x 1 Rosario Central;Libertadores;0;Paramount+;0;1
+23/04/2024 21:00;21:00;23:00:00;Atl�tico-MG 1 x 0 Pe�arol;Libertadores;0;Paramount+;0;1
+23/04/2024 21:00;21:00;23:00:00;Liverpool-URU 1 x 1 San Lorenzo;Libertadores;0;Paramount+;0;1
+23/04/2024 21:30;21:30;23:30:00;Colo-Colo 2 x 1 Alianza Lima;Libertadores;0;Paramount+;0;1
+24/04/2024 19:00;19:00;21:00:00;Nacional-URU 1 x 0 Deportivo T�chira;Libertadores;0;ESPN, Star+;0;1
+24/04/2024 19:00;19:00;21:00:00;Huachipato 1 x 1 The Strongest;Libertadores;0;Paramount+;0;1
+24/04/2024 19:00;19:00;21:00:00;Botafogo 2 x 1 Universitario;Libertadores;0;ESPN, Star+;0;1
+24/04/2024 21:00;21:00;23:00:00;Libertad 1 x 1 River Plate;Libertadores;0;Paramount+;0;1
+25/04/2024 19:00;19:00;21:00:00;Cobresal 1 x 1 Talleres;Libertadores;0;Paramount+;0;1
+25/04/2024 19:00;19:00;21:00:00;Cerro Porte�o 1 x 1 Fluminense;Libertadores;0;Paramount+;0;1
+25/04/2024 21:00;21:00;23:00:00;Palestino 1 x 1 Millonarios;Libertadores;0;ESPN, Star+;0;1
+25/04/2024 21:00;21:00;23:00:00;Barcelona-EQU 0 x 2 S�o Paulo;Libertadores;0;ESPN, Star+;0;1
+07/05/2024 19:00;19:00;21:00:00;Rosario Central 1 x 1 Atl�tico-MG;Libertadores;0;Paramount+;0;1
+07/05/2024 19:00;19:00;21:00:00;Caracas 0 x 1 Pe�arol;Libertadores;0;ESPN, Star+;0;1
+07/05/2024 21:00;21:00;23:00:00;Universitario 1 x 0 Junior Barranquilla;Libertadores;0;Paramount+;0;1
+07/05/2024 21:00;21:00;23:00:00;Deportivo T�chira 0 x 1 Libertad;Libertadores;0;ESPN, Star+;0;1
+07/05/2024 21:30;21:30;23:30:00;Botafogo 1 x 0 LDU;Libertadores;0;ESPN, Star+;0;1
+08/05/2024 19:00;19:00;21:00:00;Talleres 2 x 1 Barcelona-EQU;Libertadores;0;ESPN, Star+;0;1
+08/05/2024 21:00;21:00;23:00:00;Alianza Lima 0 x 1 Cerro Porte�o;Libertadores;0;Paramount+;0;1
+08/05/2024 21:30;21:30;23:30:00;Cobresal 0 x 1 S�o Paulo;Libertadores;0;Paramount+;0;1
+08/05/2024 23:00;23:00;01:00:00;Millonarios 1 x 1 Bol�var;Libertadores;0;ESPN, Star+;0;1
+09/05/2024 19:00;19:00;21:00:00;Liverpool-URU 0 x 1 Palmeiras;Libertadores;0;ESPN, Star+;0;1
+09/05/2024 19:00;19:00;21:00:00;San Lorenzo 1 x 1 Independiente Del Valle;Libertadores;0;Paramount+;0;1
+09/05/2024 21:00;21:00;23:00:00;The Strongest 1 x 2 Estudiantes;Libertadores;0;ESPN, Star+;0;1
+09/05/2024 21:00;21:00;23:00:00;Colo-Colo 1 x 2 Fluminense;Libertadores;0;Paramount+;0;1
+14/05/2024 19:00;19:00;21:00:00;Talleres 2 x 0 Cobresal;Libertadores;0;ESPN, Star+;0;1
+14/05/2024 19:00;19:00;21:00:00;LDU 2 x 1 Junior Barranquilla;Libertadores;0;ESPN, Star+;0;1
+14/05/2024 19:00;19:00;21:00:00;Pe�arol 1 x 1 Atl�tico-MG;Libertadores;0;Paramount+;0;1
+14/05/2024 23:00;23:00;01:00:00;Millonarios 2 x 1 Palestino;Libertadores;0;Paramount+;0;1
+15/05/2024 19:00;19:00;21:00:00;Deportivo T�chira 1 x 1 Nacional-URU;Libertadores;0;ESPN, Star+;0;1
+15/05/2024 19:00;19:00;21:00:00;The Strongest 1 x 0 Huachipato;Libertadores;0;ESPN, Star+;0;1
+15/05/2024 21:00;21:00;23:00:00;Alianza Lima 1 x 1 Colo-Colo;Libertadores;0;ESPN, Star+;0;1
+15/05/2024 21:30;21:30;23:30:00;Flamengo 1 x 0 Bol�var;Libertadores;0;Paramount+;0;1
+15/05/2024 21:30;21:30;23:30:00;Palmeiras 2 x 1 Independiente Del Valle;Libertadores;0;ESPN, Star+;0;1
+16/05/2024 19:00;19:00;21:00:00;Rosario Central 1 x 0 Caracas;Libertadores;0;Paramount+;0;1
+16/05/2024 21:00;21:00;23:00:00;S�o Paulo 1 x 1 Barcelona-EQU;Libertadores;0;Paramount+;0;1
+16/05/2024 23:00;23:00;01:00:00;Universitario 1 x 1 Botafogo;Libertadores;0;ESPN, Star+;0;1
+28/05/2024 19:00;19:00;21:00:00;Junior Barranquilla 0 x 1 Botafogo;Libertadores;0;Paramount+;0;1
+28/05/2024 19:00;19:00;21:00:00;LDU 2 x 0 Universitario;Libertadores;0;ESPN, Star+;0;1
+28/05/2024 19:00;19:00;21:00:00;Atl�tico-MG 2 x 0 Caracas;Libertadores;0;Paramount+;0;1
+28/05/2024 19:00;19:00;21:00:00;Pe�arol 1 x 1 Rosario Central;Libertadores;0;ESPN, Star+;0;1
+28/05/2024 21:00;21:00;23:00:00;Flamengo 2 x 1 Millonarios;Libertadores;0;Paramount+;0;1
+28/05/2024 21:00;21:00;23:00:00;Bol�var 1 x 0 Palestino;Libertadores;0;ESPN, Star+;0;1
+29/05/2024 19:00;19:00;21:00:00;Gr�mio 3 x 0 The Strongest;Libertadores;0;ESPN, Star+;0;1
+29/05/2024 19:00;19:00;21:00:00;Estudiantes 2 x 0 Huachipato;Libertadores;0;ESPN, Star+;0;1
+29/05/2024 21:30;21:30;23:30:00;S�o Paulo 2 x 1 Talleres;Libertadores;0;Paramount+;0;1
+29/05/2024 21:30;21:30;23:30:00;Cerro Porte�o 2 x 1 Colo-Colo;Libertadores;0;Paramount+;0;1
+13/08/2024 19:00;19:00;21:00:00;Gr�mio 2 x 1 Fluminense (Arena do Gr�mio);Libertadores;1;ESPN, Disney+;0;1
+13/08/2024 21:30;21:30;23:30:00;San Lorenzo 1 x 1 Atl�tico-MG (Pedro Bidegain);Libertadores;0;Paramount+;0;1
+14/08/2024 19:00;19:00;21:00:00;Pe�arol 4 x 0 The Strongest (Campe�n del Siglo);Libertadores;0;ESPN, Star+;0;1
+14/08/2024 21:30;21:30;23:30:00;Colo-Colo 1 x 0 Junior Barranquilla (Estadio Monumental);Libertadores;0;Paramount+;0;1
+14/08/2024 21:30;21:30;23:30:00;Talleres 0 x 1 River Plate (Mario Alberto Kempes);Libertadores;0;Paramount+;0;1
+15/08/2024 19:00;19:00;21:00:00;Nacional-URU 0 x 0 S�o Paulo (Gran Parque Central);Libertadores;0;Paramount+;0;1
+15/08/2024 21:30;21:30;23:30:00;Flamengo 2 x 0 Bol�var (Maracan�);Libertadores;0;ESPN, Disney+;0;1
+20/08/2024 19:00;19:00;21:00:00;Fluminense 2 (4) x 1 (2) Gr�mio (Maracan�);Libertadores;1;ESPN, Disney+;0;1
+20/08/2024 21:30;21:30;23:30:00;Atl�tico-MG 1 x 0 San Lorenzo (Arena MRV);Libertadores;0;Paramount+;0;1
+20/08/2024 21:30;21:30;23:30:00;Junior Barranquilla 1 x 2 Colo-Colo (Est�dio Metropolitano);Libertadores;0;Paramount+;0;1
+21/08/2024 19:00;19:00;21:00:00;The Strongest 1 x 0 Pe�arol (Hernando Siles);Libertadores;0;ESPN, Disney+;0;1
+21/08/2024 21:30;21:30;23:30:00;River Plate 2 x 1 Talleres (Monumental de N��ez);Libertadores;0;Paramount+;0;1
+22/08/2024 19:00;19:00;21:00:00;S�o Paulo 2 x 0 Nacional-URU (Morumbi);Libertadores;0;Paramount+;0;1
+22/08/2024 21:30;21:30;23:30:00;Bol�var 1 x 0 Flamengo (Hernando Siles);Libertadores;0;ESPN, Disney+;0;1
+17/09/2024 21:30;21:30;23:30:00;Colo-Colo 1 x 2 River Plate;Libertadores;0;Paramount+;0;1
+17/09/2024 19:00;19:00;21:00:00;Fluminense 1 x 1 Atl�tico-MG;Libertadores;1;Paramount+;0;1
+24/09/2024 21:30;21:30;23:30:00;River Plate 2 x 1 Colo-Colo;Libertadores;0;Paramount+;0;1
+25/09/2024 19:00;19:00;21:00:00;Atl�tico-MG 2 x 0 Fluminense;Libertadores;0;Paramount+;0;1
+23/10/2024 21:30;21:30;23:30:00;River Plate 1 x 2 Atl�tico-MG (ida);Libertadores;0;ESPN, Disney+;0;1
+30/10/2024 21:30;21:30;23:30:00;Atl�tico-MG 1 x 0 River Plate (volta);Libertadores;0;ESPN, Disney+;0;1
+15/01/2023 18:30;18:30;20:30:00;S�o Paulo 0 x 0 Ituano;Paulistao;1;TNT, HBO Max, Est�dio TNT Sports;0;1
+19/01/2023 21:30;21:30;23:30:00;Botafogo-SP 0 x 1 Palmeiras;Paulistao;1;TNT, HBO Max, Est�dio TNT Sports;0;1
+22/01/2023 18:30;18:30;20:30:00;S�o Bernardo 1 x 1 Santos;Paulistao;1;TNT, HBO Max, Est�dio TNT Sports;0;1
+26/01/2023 21:30;21:30;23:30:00;S�o Paulo 4 x 1 Portuguesa;Paulistao;1;TNT, HBO Max, Est�dio TNT Sports;0;1
+12/03/2023 16:00;16:00;18:00:00;S�o Paulo 0 x 0 (5 x 6 p.) �gua Santa;Paulistao;1;TNT, HBO Max, Est�dio TNT Sports;0;1
+20/01/2024 17:15;17:15;19:15:00;Bragantino x �gua Santa;Paulistao;1;TNT, HBO Max, Paulist�o Play;0;1
+20/01/2024 18:00;18:00;20:00:00;Botafogo-SP x Santos;Paulistao;1;Caz�TV, Paulist�o Play;0;1
+20/01/2024 20:00;20:00;22:00:00;S�o Paulo x Santo Andr�;Paulistao;1;TNT, HBO Max;0;1
+20/01/2024 20:15;20:15;22:15:00;Ponte Preta x Mirassol;Paulistao;1;Caz�TV, Paulist�o Play;0;1
+21/01/2024 16:00;16:00;18:00:00;Novorizontino x Palmeiras;Paulistao;1;Caz�TV, Paulist�o Play;0;1
+21/01/2024 16:00;16:00;18:00:00;S�o Bernardo x Ituano;Paulistao;1;Paulist�o Play;0;1
+21/01/2024 18:00;18:00;20:00:00;Inter de Limeira x Portuguesa;Paulistao;1;Caz�TV, Paulist�o Play;0;1
+21/01/2024 18:00;18:00;20:00:00;Corinthians x Guarani;Paulistao;1;Record, Paulist�o Play;0;1
+23/01/2024 19:30;19:30;21:30:00;Mirassol x S�o Paulo;Paulistao;1;Caz�TV, Paulist�o Play;0;1
+23/01/2024 21:30;21:30;23:30:00;�gua Santa x Botafogo-SP;Paulistao;1;Caz�TV, Paulist�o Play;0;1
+24/01/2024 19:30;19:30;21:30:00;Ituano x Corinthians;Paulistao;1;Record, Paulist�o Play;0;1
+24/01/2024 19:30;19:30;21:30:00;Portuguesa x Bragantino;Paulistao;1;TNT, HBO Max;0;1
+24/01/2024 21:30;21:30;23:30:00;Guarani x S�o Bernardo;Paulistao;1;Paulist�o Play;0;1
+24/01/2024 21:35;21:35;23:35:00;Palmeiras x Inter de Limeira;Paulistao;1;Paulist�o Play;0;1
+25/01/2024 19:30;19:30;21:30:00;Santos x Ponte Preta;Paulistao;1;Caz�TV, Paulist�o Play;0;1
+25/01/2024 21:00;21:00;23:00:00;Santo Andr� x Novorizontino;Paulistao;1;TNT, HBO Max;0;1
+27/01/2024 17:15;17:15;19:15:00;Bragantino x Botafogo-SP;Paulistao;1;Caz�TV, Paulist�o Play;0;1
+27/01/2024 18:00;18:00;20:00:00;S�o Paulo x Portuguesa;Paulistao;1;Record, Paulist�o Play;0;1
+27/01/2024 20:00;20:00;22:00:00;Ituano x Guarani;Paulistao;1;Record, Paulist�o Play;0;1
+27/01/2024 20:00;20:00;22:00:00;S�o Bernardo x Corinthians;Paulistao;1;Paulist�o Play;0;1
+28/01/2024 16:00;16:00;18:00:00;Ponte Preta x Inter de Limeira;Paulistao;1;Paulist�o Play;0;1
+28/01/2024 18:00;18:00;20:00:00;Palmeiras x Santos;Paulistao;1;Paulist�o Play;0;1
+28/01/2024 19:00;19:00;21:00:00;Santo Andr� x �gua Santa;Paulistao;1;TNT, HBO Max;0;1
+28/01/2024 19:00;19:00;21:00:00;Mirassol x Novorizontino;Paulistao;1;Record, Paulist�o Play;0;1
+30/01/2024 19:30;19:30;21:30:00;Corinthians x S�o Paulo;Paulistao;1;TNT, HBO Max;0;1
+31/01/2024 19:30;19:30;21:30:00;Portuguesa x Ponte Preta;Paulistao;1;Paulist�o Play;0;1
+31/01/2024 19:30;19:30;21:30:00;Bragantino x Palmeiras;Paulistao;1;Paulist�o Play;0;1
+31/01/2024 21:35;21:35;23:35:00;Guarani x Mirassol;Paulistao;1;Record, Paulist�o Play;0;1
+31/01/2024 21:35;21:35;23:35:00;�gua Santa x Santos;Paulistao;1;Paulist�o Play;0;1
+01/02/2024 19:00;19:00;21:00:00;Novorizontino x Ituano;Paulistao;1;Paulist�o Play;0;1
+01/02/2024 19:00;19:00;21:00:00;Inter de Limeira x S�o Bernardo;Paulistao;1;Caz�TV, Paulist�o Play;0;1
+01/02/2024 19:00;19:00;21:00:00;Botafogo-SP x Santo Andr�;Paulistao;1;TNT, HBO Max;0;1
+03/02/2024 18:00;18:00;20:00:00;�gua Santa x Mirassol;Paulistao;1;Record, Paulist�o Play;0;1
+04/02/2024 16:00;16:00;18:00:00;Corinthians x Novorizontino;Paulistao;1;Record, Paulist�o Play;0;1
+04/02/2024 16:00;16:00;18:00:00;Ituano x Botafogo-SP;Paulistao;1;Paulist�o Play;0;1
+04/02/2024 18:00;18:00;20:00:00;Ponte Preta x S�o Bernardo;Paulistao;1;Paulist�o Play;0;1
+04/02/2024 18:00;18:00;20:00:00;Santos x Guarani;Paulistao;1;Paulist�o Play;0;1
+04/02/2024 20:00;20:00;22:00:00;Santo Andr� x Bragantino;Paulistao;1;Paulist�o Play;0;1
+21/02/2024 19:45;19:45;21:45:00;Portuguesa x Palmeiras;Paulistao;1;Paulist�o Play;0;1
+21/02/2024 21:35;21:35;23:35:00;Inter de Limeira x S�o Paulo;Paulistao;1;TNT, HBO Max;0;1
+07/02/2024 19:00;19:00;21:00:00;Botafogo-SP x Ponte Preta;Paulistao;1;Paulist�o Play;0;1
+07/02/2024 21:00;21:00;23:00:00;Novorizontino x Bragantino;Paulistao;1;Paulist�o Play;0;1
+07/02/2024 21:30;21:30;23:30:00;S�o Bernardo x Portuguesa;Paulistao;1;Paulist�o Play;0;1
+08/02/2024 19:00;19:00;21:00:00;Mirassol x Santo Andr�;Paulistao;1;Caz�TV;0;1
+08/02/2024 19:30;19:30;21:30:00;Santos x Corinthians;Paulistao;1;Paulist�o Play;0;1
+08/02/2024 19:30;19:30;21:30:00;Palmeiras x Ituano;Paulistao;1;Paulist�o Play;0;1
+08/02/2024 21:30;21:30;23:30:00;Guarani x Inter de Limeira;Paulistao;1;TNT, HBO Max;0;1
+08/02/2024 21:35;21:35;23:35:00;S�o Paulo x �gua Santa;Paulistao;1;Record, Paulist�o Play;0;1
+10/02/2024 18:00;18:00;20:00:00;Ponte Preta x S�o Paulo;Paulistao;1;TNT, HBO Max;0;1
+10/02/2024 20:15;20:15;22:15:00;Bragantino x S�o Bernardo;Paulistao;1;Paulist�o Play;0;1
+11/02/2024 16:00;16:00;18:00:00;Corinthians x Portuguesa;Paulistao;1;Caz�TV, Paulist�o Play;0;1
+11/02/2024 16:00;16:00;18:00:00;Inter de Limeira x Botafogo-SP;Paulistao;1;TNT, HBO Max;0;1
+11/02/2024 18:00;18:00;20:00:00;�gua Santa x Ituano;Paulistao;1;Record, Paulist�o Play;0;1
+11/02/2024 18:00;18:00;20:00:00;Mirassol x Santos;Paulistao;1;Record, Paulist�o Play;0;1
+12/02/2024 19:00;19:00;21:00:00;Santo Andr� x Palmeiras;Paulistao;1;Paulist�o Play;0;1
+12/02/2024 21:00;21:00;23:00:00;Novorizontino x Guarani;Paulistao;1;Paulist�o Play;0;1
+14/02/2024 19:00;19:00;21:00:00;Ituano x Mirassol;Paulistao;1;Paulist�o Play;0;1
+14/02/2024 19:30;19:30;21:30:00;S�o Paulo x Santos;Paulistao;1;Paulist�o Play;0;1
+14/02/2024 21:30;21:30;23:30:00;Bragantino x Ponte Preta;Paulistao;1;TNT, HBO Max;0;1
+14/02/2024 21:35;21:35;23:35:00;Botafogo-SP x Corinthians;Paulistao;1;Paulist�o Play;0;1
+15/02/2024 19:00;19:00;21:00:00;Inter de Limeira x Novorizontino;Paulistao;1;Paulist�o Play;0;1
+15/02/2024 19:30;19:30;21:30:00;Guarani x Santo Andr�;Paulistao;1;Paulist�o Play;0;1
+15/02/2024 19:30;19:30;21:30:00;S�o Bernardo x Palmeiras;Paulistao;1;Record, Paulist�o Play;0;1
+15/02/2024 21:30;21:30;23:30:00;Portuguesa x �gua Santa;Paulistao;1;TNT, HBO Max;0;1
+17/02/2024 18:00;18:00;20:00:00;Mirassol x Botafogo-SP;Paulistao;1;Paulist�o Play;0;1
+17/02/2024 18:00;18:00;20:00:00;S�o Paulo x Bragantino;Paulistao;1;Paulist�o Play;0;1
+17/02/2024 20:00;20:00;22:00:00;Ponte Preta x Ituano;Paulistao;1;Paulist�o Play;0;1
+18/02/2024 16:00;16:00;18:00:00;Santos x Novorizontino;Paulistao;1;Record, Paulist�o Play;0;1
+18/02/2024 18:00;18:00;20:00:00;Palmeiras x Corinthians;Paulistao;1;Paulist�o Play;0;1
+18/02/2024 18:00;18:00;20:00:00;Portuguesa x Guarani;Paulistao;1;Paulist�o Play;0;1
+18/02/2024 20:00;20:00;22:00:00;�gua Santa x Inter de Limeira;Paulistao;1;Paulist�o Play;0;1
+19/02/2024 19:00;19:00;21:00:00;S�o Bernardo x Santo Andr�;Paulistao;1;Paulist�o Play;0;1
+24/02/2024 16:00;16:00;18:00:00;Novorizontino x �gua Santa;Paulistao;1;Paulist�o Play;0;1
+24/02/2024 16:00;16:00;18:00:00;Ituano x Bragantino;Paulistao;1;TNT, HBO Max;0;1
+24/02/2024 18:00;18:00;20:00:00;Santo Andr� x Inter de Limeira;Paulistao;1;Paulist�o Play;0;1
+24/02/2024 18:00;18:00;20:00:00;Palmeiras x Mirassol;Paulistao;1;Paulist�o Play;0;1
+25/02/2024 16:00;16:00;18:00:00;Santos x S�o Bernardo;Paulistao;1;Paulist�o Play;0;1
+25/02/2024 18:00;18:00;20:00:00;Botafogo-SP x Portuguesa;Paulistao;1;Paulist�o Play;0;1
+25/02/2024 18:00;18:00;20:00:00;Guarani x S�o Paulo;Paulistao;1;Paulist�o Play;0;1
+25/02/2024 20:00;20:00;22:00:00;Corinthians x Ponte Preta;Paulistao;1;Paulist�o Play;0;1
+02/03/2024 16:00;16:00;18:00:00;Inter de Limeira x Ituano;Paulistao;1;Record, Paulist�o Play;0;1
+02/03/2024 16:00;16:00;18:00:00;Corinthians x Santo Andr�;Paulistao;1;Caz�TV, Paulist�o Play;0;1
+02/03/2024 18:00;18:00;20:00:00;Portuguesa x Mirassol;Paulistao;1;TNT, HBO Max;0;1
+02/03/2024 20:00;20:00;22:00:00;Botafogo-SP x Guarani;Paulistao;1;Paulist�o Play;0;1
+03/03/2024 16:00;16:00;18:00:00;S�o Bernardo x �gua Santa;Paulistao;1;Paulist�o Play;0;1
+03/03/2024 17:00;17:00;19:00:00;Ponte Preta x Novorizontino;Paulistao;1;Paulist�o Play;0;1
+03/03/2024 18:00;18:00;20:00:00;Bragantino x Santos;Paulistao;1;Paulist�o Play;0;1
+03/03/2024 20:00;20:00;22:00:00;S�o Paulo x Palmeiras;Paulistao;1;Paulist�o Play;0;1
+10/03/2024 18:00;18:00;20:00:00;Guarani x Bragantino;Paulistao;1;Paulist�o Play;0;1
+10/03/2024 18:00;18:00;20:00:00;Ituano x S�o Paulo;Paulistao;1;Paulist�o Play;0;1
+10/03/2024 18:00;18:00;20:00:00;Mirassol x S�o Bernardo;Paulistao;1;Paulist�o Play;0;1
+10/03/2024 18:00;18:00;20:00:00;Novorizontino x Portuguesa;Paulistao;1;Paulist�o Play;0;1
+10/03/2024 18:00;18:00;20:00:00;Palmeiras x Botafogo-SP;Paulistao;1;Paulist�o Play;0;1
+10/03/2024 18:00;18:00;20:00:00;Santo Andr� x Ponte Preta;Paulistao;1;Paulist�o Play;0;1
+10/03/2024 18:00;18:00;20:00:00;Santos x Inter de Limeira;Paulistao;1;Paulist�o Play;0;1
+10/03/2024 18:00;18:00;20:00:00;�gua Santa x Corinthians;Paulistao;1;Paulist�o Play;0;1
+16/03/2024 18:00;18:00;20:00:00;Palmeiras x Ponte Preta;Paulistao;1;Paulist�o Play;0;1
+17/03/2024 16:00;16:00;18:00:00;Bragantino x Inter de Limeira;Paulistao;1;Paulist�o Play;0;1
+17/03/2024 18:00;18:00;20:00:00;S�o Paulo x Novorizontino;Paulistao;1;Paulist�o Play;0;1
+17/03/2024 20:15;20:15;22:15:00;Santos x Portuguesa;Paulistao;1;Paulist�o Play;0;1
+27/03/2024 20:30;20:30;22:30:00;Santos x Bragantino;Paulistao;1;Paulist�o Play;0;1
+28/03/2024 21:35;21:35;23:35:00;Palmeiras x Novorizontino;Paulistao;1;Paulist�o Play;0;1
+31/03/2024 18:00;18:00;20:00:00;Santos x Palmeiras;Paulistao;1;Paulist�o Play;0;1
+07/04/2024 18:00;18:00;20:00:00;Palmeiras x Santos;Paulistao;1;Paulist�o Play;0;1
+14/01/2023 15:30;15:30;17:30:00;Nova Igua�u 0 � 0 Volta Redonda;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+14/01/2023 16:00;16:00;18:00:00;Resende 0 � 2 Fluminense;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+14/01/2023 18:00;18:00;20:00:00;Vasco da Gama 0 � 0 Madureira;Cariocao;1;Caz�TV;0;1
+15/01/2023 15:30;15:30;17:30:00;Boavista-RJ 2 � 2 Bangu;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+15/01/2023 16:00;16:00;18:00:00;Botafogo 0 � 1 Audax Rio;Cariocao;1;Caz�TV;0;1
+15/01/2023 18:00;18:00;20:00:00;Flamengo 4 � 1 Portuguesa-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+17/01/2023 21:10;21:10;23:10:00;Fluminense 1 � 0 Nova Igua�u;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+18/01/2023 15:30;15:30;17:30:00;Bangu 1 � 0 Resende;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+18/01/2023 19:00;19:00;21:00:00;Madureira 0 � 0 Flamengo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+18/01/2023 21:00;21:00;23:00:00;Portuguesa-RJ 1 � 0 Boavista-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+19/01/2023 19:30;19:30;21:30:00;Volta Redonda 1 � 2 Botafogo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+19/01/2023 21:10;21:10;23:10:00;Audax Rio 1 � 1 Vasco da Gama;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+21/01/2023 16:00;16:00;18:00:00;Flamengo 5 � 0 Nova Igua�u;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+21/01/2023 20:00;20:00;22:00:00;Portuguesa-RJ 0 � 1 Bangu;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+22/01/2023 15:30;15:30;17:30:00;Resende 2 � 1 Boavista-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+22/01/2023 16:00;16:00;18:00:00;Volta Redonda 3 � 2 Audax Rio;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+22/01/2023 18:00;18:00;20:00:00;Madureira 0 � 1 Fluminense;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+16/02/2023 20:30;20:30;22:30:00;Vasco da Gama 2 � 0 Botafogo;Cariocao;1;Caz�TV;0;1
+24/01/2023 21:10;21:10;23:10:00;Bangu 1 � 1 Flamengo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+25/01/2023 15:30;15:30;17:30:00;Audax Rio 1 � 1 Nova Igua�u;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+25/01/2023 19:00;19:00;21:00:00;Volta Redonda 5 � 1 Resende;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+25/01/2023 21:10;21:10;23:10:00;Portuguesa-RJ 0 � 2 Vasco da Gama;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+26/01/2023 19:30;19:30;21:30:00;Botafogo 2 � 0 Madureira;Cariocao;1;Caz�TV;0;1
+26/01/2023 21:10;21:10;23:10:00;Fluminense 1 � 1 Boavista-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+12/01/2023 21:30;21:30;23:30:00;Flamengo 1 � 0 Audax Rio;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+28/01/2023 15:30;15:30;17:30:00;Nova Igua�u 1 � 0 Bangu;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+29/01/2023 15:30;15:30;17:30:00;Resende 0 � 0 Portuguesa-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+29/01/2023 18:00;18:00;20:00:00;Fluminense 0 � 1 Botafogo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+29/01/2023 20:15;20:15;22:15:00;Boavista-RJ 0 � 2 Madureira;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+30/01/2023 20:00;20:00;22:00:00;Vasco da Gama 1 � 2 Volta Redonda;Cariocao;1;Caz�TV;0;1
+01/02/2023 15:30;15:30;17:30:00;Audax Rio 0 � 0 Bangu;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+01/02/2023 19:00;19:00;21:00:00;Botafogo 0 � 0 Nova Igua�u;Cariocao;1;Caz�TV;0;1
+01/02/2023 21:10;21:10;23:10:00;Flamengo 1 � 0 Boavista-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+02/02/2023 15:30;15:30;17:30:00;Madureira 1 � 1 Portuguesa-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+02/02/2023 19:00;19:00;21:00:00;Vasco da Gama 5 � 0 Resende;Cariocao;1;Caz�TV;0;1
+02/02/2023 21:10;21:10;23:10:00;Volta Redonda 1 � 0 Fluminense;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+05/02/2023 15:30;15:30;17:30:00;Bangu 1 � 0 Madureira;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+05/02/2023 16:00;16:00;18:00:00;Boavista-RJ 0 � 4 Botafogo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+05/02/2023 18:00;18:00;20:00:00;Fluminense 3 � 0 Audax Rio;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+06/02/2023 15:30;15:30;17:30:00;Portuguesa-RJ 3 � 1 Volta Redonda;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+07/02/2023 21:10;21:10;23:10:00;Nova Igua�u 0 � 2 Vasco da Gama;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+18/02/2023 16:00;16:00;18:00:00;Resende 0 � 2 Flamengo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+11/02/2023 15:30;15:30;17:30:00;Nova Igua�u 1 � 1 Portuguesa-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+11/02/2023 15:30;15:30;17:30:00;Madureira 1 � 0 Resende;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+11/02/2023 19:00;19:00;21:00:00;Botafogo 2 � 0 Bangu;Cariocao;1;Caz�TV;0;1
+12/02/2023 15:30;15:30;17:30:00;Audax Rio 3 � 2 Boavista-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+12/02/2023 18:00;18:00;20:00:00;Fluminense 2 � 0 Vasco da Gama;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+15/02/2023 21:10;21:10;23:10:00;Volta Redonda 1 � 3 Flamengo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+25/02/2023 15:30;15:30;17:30:00;Nova Igua�u 1 � 0 Resende;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+25/02/2023 16:00;16:00;18:00:00;Fluminense 3 � 0 Portuguesa-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+25/02/2023 18:00;18:00;20:00:00;Botafogo 0 � 1 Flamengo;Cariocao;1;Caz�TV;0;1
+26/02/2023 15:30;15:30;17:30:00;Bangu 0 � 4 Volta Redonda;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+27/02/2023 15:30;15:30;17:30:00;Audax Rio 3 � 1 Madureira;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+27/02/2023 19:30;19:30;21:30:00;Vasco da Gama 4 � 1 Boavista-RJ;Cariocao;1;Caz�TV;0;1
+03/03/2023 15:30;15:30;17:30:00;Portuguesa-RJ 1 � 1 Audax Rio;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+04/03/2023 15:30;15:30;17:30:00;Madureira 0 � 6 Volta Redonda;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+04/03/2023 16:00;16:00;18:00:00;Bangu 0 � 5 Fluminense;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+04/03/2023 19:20;19:20;21:20:00;Boavista-RJ 1 � 0 Nova Igua�u;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+05/03/2023 16:00;16:00;18:00:00;Resende 0 � 2 Botafogo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+05/03/2023 18:10;18:10;20:10:00;Flamengo 0 � 1 Vasco da Gama;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+08/03/2023 21:10;21:10;23:10:00;Flamengo 1 � 2 Fluminense;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+08/03/2023 21:10;21:10;23:10:00;Botafogo 0 � 1 Portuguesa-RJ;Cariocao;1;Caz�TV;0;1
+08/03/2023 21:10;21:10;23:10:00;Resende 0 � 2 Audax Rio;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+08/03/2023 21:10;21:10;23:10:00;Boavista-RJ 3 � 3 Volta Redonda;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+09/03/2023 15:30;15:30;17:30:00;Nova Igua�u 4 � 0 Madureira;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+09/03/2023 19:30;19:30;21:30:00;Vasco da Gama 2 � 0 Bangu;Cariocao;1;Caz�TV;0;1
+12/03/2023 18:00;18:00;20:00:00;Volta Redonda 2 � 1 Fluminense;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+13/03/2023 21:10;21:10;23:10:00;Flamengo 3 � 2 Vasco da Gama;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+18/03/2023 16:00;16:00;18:00:00;Fluminense 7 � 0 Volta Redonda;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+19/03/2023 18:00;18:00;20:00:00;Vasco da Gama 1 � 3 Flamengo;Cariocao;1;Caz�TV;0;1
+01/04/2023 20:30;20:30;22:30:00;Flamengo 2 � 0 Fluminense;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+09/04/2023 18:00;18:00;20:00:00;Fluminense 4 � 1 Flamengo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+17/01/2024 15:45;15:45;17:45:00;Portuguesa-RJ 1 � 0 Bangu;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+17/01/2024 17:00;17:00;19:00:00;Botafogo 1 � 0 Madureira;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+17/01/2024 21:30;21:30;23:30:00;Flamengo 4 � 0 Audax Rio;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+18/01/2024 15:45;15:45;17:45:00;Nova Igua�u 2 � 1 Sampaio Corr�a-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+18/01/2024 21:30;21:30;23:30:00;Volta Redonda 1 � 1 Fluminense;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+20/01/2024 15:45;15:45;17:45:00;Madureira 1 � 0 Audax Rio;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+20/01/2024 16:00;16:00;18:00:00;Botafogo 2 � 0 Bangu;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+21/01/2024 16:00;16:00;18:00:00;Fluminense 2 � 1 Portuguesa-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+21/01/2024 18:10;18:10;20:10:00;Volta Redonda 2 � 3 Boavista-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+21/01/2024 18:10;18:10;20:10:00;Nova Igua�u 1 � 1 Flamengo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+21/01/2024 20:30;20:30;22:30:00;Sampaio Corr�a-RJ 3 � 3 Vasco da Gama;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+24/01/2024 16:00;16:00;18:00:00;Bangu 2 � 3 Nova Igua�u;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+24/01/2024 19:00;19:00;21:00:00;Portuguesa-RJ 1 � 0 Sampaio Corr�a-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+24/01/2024 21:30;21:30;23:30:00;Boavista-RJ 1 � 0 Botafogo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+25/01/2024 21:30;21:30;23:30:00;Audax Rio 0 � 1 Fluminense;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+10/02/2024 16:00;16:00;18:00:00;Flamengo 3 � 0 Volta Redonda;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+27/01/2024 16:00;16:00;18:00:00;Botafogo 2 � 0 Sampaio Corr�a-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+27/01/2024 18:10;18:10;20:10:00;Portuguesa-RJ 0 � 0 Flamengo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+28/01/2024 15:45;15:45;17:45:00;Madureira 3 � 1 Volta Redonda;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+28/01/2024 16:00;16:00;18:00:00;Bangu 2 � 2 Vasco da Gama;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+28/01/2024 18:10;18:10;20:10:00;Fluminense 3 � 0 Nova Igua�u;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+29/01/2024 20:30;20:30;22:30:00;Audax Rio 0 � 1 Boavista-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+30/01/2024 21:30;21:30;23:30:00;Botafogo 1 � 1 Portuguesa-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+31/01/2024 18:10;18:10;20:10:00;Nova Igua�u 2 � 0 Vasco da Gama;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+31/01/2024 21:30;21:30;23:30:00;Sampaio Corr�a-RJ 0 � 2 Flamengo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+01/02/2024 15:30;15:30;17:30:00;Madureira 3 � 0 Boavista-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+01/02/2024 19:00;19:00;21:00:00;Volta Redonda 2 � 0 Audax Rio;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+01/02/2024 21:30;21:30;23:30:00;Fluminense 4 � 1 Bangu;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+03/02/2024 16:00;16:00;18:00:00;Botafogo 2 � 2 Nova Igua�u;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+04/02/2024 15:45;15:45;17:45:00;Sampaio Corr�a-RJ 0 � 2 Volta Redonda;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+04/02/2024 16:00;16:00;18:00:00;Boavista-RJ 2 � 2 Fluminense;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+04/02/2024 21:30;21:30;23:30:00;Audax Rio 0 � 1 Bangu;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+05/02/2024 15:45;15:45;17:45:00;Madureira 0 � 0 Portuguesa-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+07/02/2024 18:30;18:30;20:30:00;Bangu 1 � 1 Volta Redonda;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+07/02/2024 21:30;21:30;23:30:00;Flamengo 1 � 0 Botafogo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+08/02/2024 15:45;15:45;17:45:00;Nova Igua�u 1 � 0 Madureira;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+08/02/2024 21:30;21:30;23:30:00;Fluminense 1 � 0 Sampaio Corr�a-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+09/02/2024 19:15;19:15;21:15:00;Boavista-RJ 2 � 2 Portuguesa-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+14/02/2024 15:45;15:45;17:45:00;Sampaio Corr�a-RJ 2 � 1 Madureira;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+14/02/2024 19:00;19:00;21:00:00;Volta Redonda 0 � 3 Botafogo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+14/02/2024 21:30;21:30;23:30:00;Fluminense 0 � 0 Vasco da Gama;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+15/02/2024 15:45;15:45;17:45:00;Nova Igua�u 1 � 1 Boavista-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+15/02/2024 19:00;19:00;21:00:00;Portuguesa-RJ 1 � 0 Audax Rio;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+15/02/2024 21:30;21:30;23:30:00;Bangu 0 � 3 Flamengo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+17/02/2024 16:00;16:00;18:00:00;Madureira 0 � 1 Fluminense;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+18/02/2024 16:00;16:00;18:00:00;Botafogo 2 � 4 Vasco da Gama;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+18/02/2024 18:10;18:10;20:10:00;Volta Redonda 2 � 2 Portuguesa-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+18/02/2024 21:30;21:30;23:30:00;Audax Rio 1 � 2 Nova Igua�u;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+20/02/2024 15:45;15:45;17:45:00;Sampaio Corr�a-RJ 2 � 0 Bangu;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+20/02/2024 21:30;21:30;23:30:00;Flamengo 4 � 0 Boavista-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+24/02/2024 16:00;16:00;18:00:00;Audax Rio 0 � 2 Botafogo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+24/02/2024 18:30;18:30;20:30:00;Portuguesa-RJ 1 � 2 Nova Igua�u;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+25/02/2024 16:00;16:00;18:00:00;Flamengo 2 � 0 Fluminense;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+25/02/2024 18:15;18:15;20:15:00;Bangu 2 � 1 Madureira;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+25/02/2024 20:30;20:30;22:30:00;Boavista-RJ 3 � 2 Sampaio Corr�a-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+02/03/2024 16:00;16:00;18:00:00;Audax Rio 0 � 4 Sampaio Corr�a-RJ;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+02/03/2024 16:00;16:00;18:00:00;Flamengo 3 � 0 Madureira;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+03/03/2024 16:00;16:00;18:00:00;Fluminense 2 � 4 Botafogo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+03/03/2024 18:10;18:10;20:10:00;Volta Redonda 1 � 2 Nova Igua�u;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+03/03/2024 18:10;18:10;20:10:00;Boavista-RJ 5 � 3 Bangu;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+09/03/2024 21:00;21:00;23:00:00;Fluminense 0 � 2 Flamengo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+16/03/2024 21:00;21:00;23:00:00;Flamengo 0 � 0 Fluminense;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+17/03/2024 16:00;16:00;18:00:00;Nova Igua�u 1 � 0 Vasco da Gama;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+30/03/2024 17:00;17:00;19:00:00;Nova Igua�u 0 � 3 Flamengo;Cariocao;1;Band, Bandsports, Canal GOAT;0;1
+07/04/2024 17:00;17:00;19:00:00;Flamengo 1 � 0 Nova Igua�u;Cariocao;1;Band, Bandsports, Canal GOAT;0;1

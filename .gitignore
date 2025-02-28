@@ -178,6 +178,9 @@ database.db
 
 *.csv
 
+!eventos_externos.csv
+!futebol_externo.csv
+
 credentials.json
 
 rascunho.ipynb

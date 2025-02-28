@@ -45,7 +45,49 @@ def fill_hourly_gaps(df, datetime_column):
     return filled_df
 
 
-def tratar_redes_sociais(df):
+def tratar_redes_sociais_canais(df):
+    """
+    Função específica para tratar os dados de redes sociais dos canais (G1, GE, GSHOW, ETC.)
+    """
+
+    df.columns = df.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '').str.replace('[', '').str.replace(']', '')
+    df['data_'] = pd.to_datetime(df['data_'], format='%d/%m/%Y %H:%M')
+    df['data_'] = df['data_'].dt.round('h')
+    df = df.copy(); df.rename(columns={'interacoes\r': 'interacoes'}, inplace=True); df.loc[:, 'interacoes'] = df['interacoes'].str.replace('\r', '').fillna('').replace('', '0').astype(int)
+    df['plataforma'] = df['plataforma'].str.upper()
+    df = df[['data_', 'perfil', 'plataforma', 'alcance', 'videoviews', 'impressoes', 'reacoes', 'comentarios', 'interacoes']]
+    
+    # Fix for the FutureWarning about downcasting
+    df = df.infer_objects().fillna(0)
+    
+
+    df = df[['data_', 'perfil', 'plataforma', 'alcance', 'videoviews', 'impressoes', 'reacoes', 'comentarios', 'interacoes']]
+
+    df = df.groupby(['data_', 'perfil', 'plataforma'], as_index=False).sum()
+
+    redes_canais = df.melt(
+        id_vars=["perfil", "data_", "plataforma"], 
+        var_name="metrica", 
+        value_name="valor"
+    )
+    redes_canais["nova_coluna"] = redes_canais["plataforma"] + "_" + redes_canais["perfil"] + "_" + redes_canais["metrica"]
+
+
+    # Pivot e limpeza final
+    result_df = redes_canais.pivot(
+        index="data_", 
+        columns="nova_coluna", 
+        values="valor"
+    ).reset_index()
+    result_df.columns.name = None
+
+    result_df = result_df.rename(columns={'data_': 'data_hora'})
+    result_df = fill_hourly_gaps(result_df, 'data_hora')
+
+    return result_df
+
+
+def tratar_redes_sociais_linear(df):
     """
     Função específica para tratar os dados de redes sociais.
     """
@@ -185,25 +227,47 @@ def carregar_e_tratar_dados():
     st.subheader("Upload dos dados")
     
     # Criar três colunas
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     # Primeira coluna - Redes Sociais
     with col1:
-        st.text("CSV de redes sociais:")
+        st.text("CSV de redes sociais GLOBO:")
         arquivo_redes_sociais = st.file_uploader("", type=['csv'], key='upload1')
         df_redes_sociais = None
         if arquivo_redes_sociais is not None:
             try:
                 df_redes_sociais = pd.read_csv(arquivo_redes_sociais)
-                df_redes_sociais = tratar_redes_sociais(df_redes_sociais)
+                df_redes_sociais = tratar_redes_sociais_linear(df_redes_sociais)
                 st.success("Arquivo de redes sociais processado!")
             except Exception as e:
                 st.error(f"Erro ao processar arquivo: {str(e)}")
+
+    with col2:
+        st.text("CSV de redes sociais CANAIS:")
+        arquivo_redes_sociais_canais = st.file_uploader("", type=['csv'], key='upload2')
+        df_redes_sociais_canais = None
+        if arquivo_redes_sociais_canais is not None:
+            try:
+                # Added low_memory=False to fix the DtypeWarning
+                df_redes_sociais_canais = pd.read_csv('redes_sociais_canais.csv', 
+                          encoding='latin-1',  # or 'cp1252' for Windows encoding
+                          sep=';',             # Use semicolon as delimiter
+                          quotechar='"',       # Specify quote character
+                          doublequote=True,    # Handle double quotes within fields
+                          lineterminator='\n', # Explicit line terminator
+                          escapechar='\\',     # Escape character for special chars
+                          on_bad_lines='skip', # Skip bad lines
+                          low_memory=False)    # Added to fix DtypeWarning
+                df_redes_sociais_canais = tratar_redes_sociais_canais(df_redes_sociais_canais)
+                st.success("Arquivo de redes sociais processado!")
+            except Exception as e:
+                st.error(f"Erro ao processar arquivo: {str(e)}")
+
     
     # Segunda coluna - GloboPlay
-    with col2:
+    with col3:
         st.text("CSV de GloboPlay:")
-        arquivo_globoplay = st.file_uploader("", type=['csv'], key='upload2')
+        arquivo_globoplay = st.file_uploader("", type=['csv'], key='upload3')
         df_globoplay = None
         if arquivo_globoplay is not None:
             try:
@@ -214,9 +278,9 @@ def carregar_e_tratar_dados():
                 st.error(f"Erro ao processar arquivo: {str(e)}")
     
     # Terceira coluna - TV Linear
-    with col3:
+    with col4:
         st.text("CSV de TV Linear:")
-        arquivo_tv_linear = st.file_uploader("", type=['csv'], key='upload3')
+        arquivo_tv_linear = st.file_uploader("", type=['csv'], key='upload4')
         df_tv_linear = None
         if arquivo_tv_linear is not None:
             try:
@@ -226,10 +290,10 @@ def carregar_e_tratar_dados():
             except Exception as e:
                 st.error(f"Erro ao processar arquivo: {str(e)}")
     
-    return df_redes_sociais, df_globoplay, df_tv_linear
+    return df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear
 
 
-def merge_data(df_redes_sociais, df_globoplay, df_tv_linear):
+def merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear):
     """
     Merge data from social media, Globoplay, and linear TV, keeping only data points
     that exist in all three dataframes, with appropriate prefixes for each source.
@@ -243,7 +307,7 @@ def merge_data(df_redes_sociais, df_globoplay, df_tv_linear):
         DataFrame: Merged dataframe containing only overlapping time periods with prefixed columns
     """
     # Check if all dataframes exist
-    if df_redes_sociais is None or df_globoplay is None or df_tv_linear is None:
+    if df_redes_sociais is None or df_redes_sociais_canais is None or df_globoplay is None or df_tv_linear is None:
         return None
     
     # Round timestamps to the nearest hour for consistent merging
@@ -262,8 +326,12 @@ def merge_data(df_redes_sociais, df_globoplay, df_tv_linear):
     df_tv_linear = df_tv_linear.rename(columns=prefix_columns)
     
     # 2. For redes_sociais add RS_ prefix
-    prefix_columns = {col: f'RS_{col}' for col in df_redes.columns if col != 'data_hora'}
+    prefix_columns = {col: f'RS_GLOBO_{col}' for col in df_redes.columns if col != 'data_hora'}
     df_redes = df_redes.rename(columns=prefix_columns)
+
+    # 2. For redes_sociais add RS_ prefix
+    prefix_columns = {col: f'RS_CANAIS_{col}' for col in df_redes_sociais_canais.columns if col != 'data_hora'}
+    df_redes_sociais_canais = df_redes_sociais_canais.rename(columns=prefix_columns)
     
     # 3. For globoplay add GP_ prefix
     prefix_columns = {col: f'GP_{col}' for col in df_globo.columns if col != 'data_hora'}
@@ -272,7 +340,7 @@ def merge_data(df_redes_sociais, df_globoplay, df_tv_linear):
     # Perform inner merge to keep only data present in all three dataframes
     df_merged = pd.merge(
         df_redes,
-        df_globo,
+        df_redes_sociais_canais,
         on='data_hora',
         how='inner'
     )
@@ -281,6 +349,14 @@ def merge_data(df_redes_sociais, df_globoplay, df_tv_linear):
     df_merged = pd.merge(
         df_merged,
         df_tv_linear,
+        on='data_hora',
+        how='inner'  # Using inner join to keep only common timestamps
+    )
+
+    # Merge with TV linear data
+    df_merged = pd.merge(
+        df_merged,
+        df_globo,
         on='data_hora',
         how='inner'  # Using inner join to keep only common timestamps
     )

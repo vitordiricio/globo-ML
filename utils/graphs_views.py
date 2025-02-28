@@ -152,6 +152,7 @@ def cria_dataframe_correlacao_com_target(df_model, target, prefix=None):
     corr_series = corr_series.reindex(corr_series.abs().sort_values(ascending=False).index)
     df_corr_y = corr_series.to_frame(name="Correlação")
     df_corr_y.index.name = "Colunas"
+    df_corr_y = df_corr_y.sort_values('Correlação', ascending=False)
 
     custom_cmap = LinearSegmentedColormap.from_list(
         "custom_cmap", 
