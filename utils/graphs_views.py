@@ -113,15 +113,42 @@ def mostrar_metricas(y_test, y_pred):
             label_visibility="visible"
         )
 
-def cria_dataframe_correlacao_com_target(df_model, target):
-
-    # Calcular a correlação de Y com as demais colunas (convertendo para numérico se necessário)
-    df_corr_model = df_model.copy()
+def cria_dataframe_correlacao_com_target(df_model, target, prefix=None):
+    """
+    Creates a correlation dataframe between a target variable and other variables.
+    
+    Args:
+        df_model: DataFrame containing the data
+        target: Target variable for correlation
+        prefix: Optional prefix to filter columns (e.g., 'RS_', 'GP_', 'LINEAR_')
+    """
+    # Filter columns by prefix if specified
+    if prefix:
+        columns_to_use = [col for col in df_model.columns if col.startswith(prefix) or col == target]
+        df_subset = df_model[columns_to_use]
+    else:
+        df_subset = df_model.copy()
+    
+    # Calculate correlation with target
+    df_corr_model = df_subset.copy()
     for col in df_corr_model.columns:
         if not pd.api.types.is_numeric_dtype(df_corr_model[col]):
             df_corr_model[col] = df_corr_model[col].astype('category').cat.codes
+    
     corr_matrix_model = df_corr_model.corr()
+    
+    # If the target is not in the subset (e.g., no columns with this prefix), return a message
+    if target not in corr_matrix_model.columns:
+        st.write("Não há variáveis disponíveis para correlação.")
+        return
+    
     corr_series = corr_matrix_model[target].drop(target).fillna(0)
+    
+    # If there are no columns to correlate, return a message
+    if len(corr_series) == 0:
+        st.write("Não há variáveis disponíveis para correlação.")
+        return
+    
     corr_series = corr_series.reindex(corr_series.abs().sort_values(ascending=False).index)
     df_corr_y = corr_series.to_frame(name="Correlação")
     df_corr_y.index.name = "Colunas"
@@ -131,9 +158,7 @@ def cria_dataframe_correlacao_com_target(df_model, target):
         [(0.0, "lightcoral"), (0.5, "yellow"), (1.0, "lightgreen")]
     )
     
-    st.markdown(f"**Correlação das variáveis com `{target}`:**")
     st.dataframe(
         df_corr_y.style.format("{:.5f}").background_gradient(cmap=custom_cmap),
-        height=400
+        height=300
     )
-
