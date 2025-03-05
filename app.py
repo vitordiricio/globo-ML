@@ -15,7 +15,7 @@ from utils.graphs_views import (
     cria_dataframe_correlacao_com_target,
     plot_feature_importance
 )
-from utils.external_data import fetch_all_bcb_economic_indicators
+from utils.external_data import fetch_all_bcb_economic_indicators, join_futebol_external_data, join_tweets
 from utils.ml_models import AVAILABLE_MODELS
 
 from utils.analises_estaticas import analise_redes_sociais
@@ -58,10 +58,12 @@ def main():
             max_date = df_merged['data_hora'].max().strftime('%d/%m/%Y')
             min_date = df_merged['data_hora'].min().strftime('%d/%m/%Y')
             df_merged = fetch_all_bcb_economic_indicators(df_merged, 'data_hora', min_date, max_date)
+            df_merged = join_futebol_external_data(df_merged)
+            df_merged = join_tweets(df_merged)
 
 
             st.subheader("Pré-visualização dos Dados juntos")
-            st.dataframe(df_merged, hide_index=True, height=250)
+            st.dataframe(df_merged.head(5), hide_index=True, height=250)
             
             # Exibe o heatmap de correlação
             plot_heatmap_correlation_total(df_merged)

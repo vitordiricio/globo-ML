@@ -4,6 +4,7 @@ import streamlit as st
 from datetime import datetime, timedelta
 import numpy as np
 
+
 def fill_hourly_gaps(df, datetime_column):
     """
     Fill gaps in hourly data with zeros for all metric columns using an optimized approach.
@@ -43,6 +44,7 @@ def fill_hourly_gaps(df, datetime_column):
     filled_df = filled_df.rename(columns={'index': datetime_column})
     
     return filled_df
+
 
 
 def tratar_redes_sociais_canais(df):

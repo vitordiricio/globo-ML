@@ -1,6 +1,31 @@
 import pandas as pd
 from datetime import datetime, time
 import requests
+from utils.data_processing import fill_hourly_gaps
+
+
+def join_tweets(tabela_mae):
+    """
+    Função específica para tratar os dados de tweets coletados
+    """
+    tweets = pd.read_csv('tweets_23_24.csv')
+
+    tweets['data_hora'] = pd.to_datetime(tweets['Data'] + ' ' + tweets['Hora'], format='%d/%m/%y %H:%M')
+    tweets['data_hora'] = tweets['data_hora'].dt.round('h')
+    tweets = tweets[(tweets['data_hora'] >= '2023-01-01') & (tweets['data_hora'] < '2025-01-01')]
+    tweets = tweets.groupby('data_hora').size().reset_index(name='EXTERNO_quantidade_tweets')
+
+    tweets = fill_hourly_gaps(tweets, 'data_hora')
+
+    # Merge with TV linear data
+    df_merged = pd.merge(
+        tabela_mae,
+        tweets,
+        on='data_hora',
+        how='inner'  # Using inner join to keep only common timestamps
+    )
+
+    return df_merged
 
 def join_futebol_external_data(tabela_mae):
     dados_externos_futebol = pd.read_csv('futebol_externo.csv', sep = ";")
