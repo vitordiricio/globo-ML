@@ -180,10 +180,12 @@ database.db
 
 !eventos_externos.csv
 !futebol_externo.csv
+!tweets_23_24.csv
 
 credentials.json
 
 rascunho.ipynb
+.devcontainer
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 
