@@ -1,9 +1,13 @@
 import pandas as pd
 from datetime import datetime, time
 import requests
+import streamlit as st
+import numpy as np
 from utils.data_processing import fill_hourly_gaps
+import concurrent.futures
 
 
+@st.cache_data
 def join_tweets(tabela_mae):
     """
     Função específica para tratar os dados de tweets coletados
@@ -27,133 +31,50 @@ def join_tweets(tabela_mae):
 
     return df_merged
 
+
+@st.cache_data
 def join_futebol_external_data(tabela_mae):
-    dados_externos_futebol = pd.read_csv('futebol_externo.csv', sep = ";")
+    """
+    Otimização da função que processa dados externos de futebol
+    """
+    dados_externos_futebol = pd.read_csv('futebol_externo.csv', sep=";")
 
     # Garantir que data_hora em tabela_mae seja datetime
     if not pd.api.types.is_datetime64_dtype(tabela_mae['data_hora']):
         tabela_mae['data_hora'] = pd.to_datetime(tabela_mae['data_hora'])
     
     # Criar a coluna no tabela_mae inicializada com 0
+    tabela_mae = tabela_mae.copy()  # Criar cópia para evitar SettingWithCopyWarning
     tabela_mae['EXTERNO_FUTEBOL_CONCORRENTE_ON'] = 0
     
-    # Processar dados_externos_futebol
-    # Converter data_hora para datetime
+    # Processar dados_externos_futebol de forma vetorizada
     dados_externos_futebol['data_datetime'] = pd.to_datetime(dados_externos_futebol['data_hora'], format='%d/%m/%Y %H:%M')
-    
-    # Extrair apenas a data
     dados_externos_futebol['data'] = dados_externos_futebol['data_datetime'].dt.date
     
-    # Extrair apenas a parte da hora (arredondando para hora cheia)
-    def extrair_hora(hora_str):
-        partes = hora_str.split(':')
-        return int(partes[0])  # Pegar apenas a parte da hora
+    # Extrair parte da hora usando operação vetorizada
+    dados_externos_futebol['hora_inicio_h'] = dados_externos_futebol['hora_inicio'].str.split(':').str[0].astype(int)
+    dados_externos_futebol['hora_fim_h'] = dados_externos_futebol['hora_fim'].str.split(':').str[0].astype(int)
     
-    # Criar data_inicio e data_fim com horas arredondadas
-    dados_externos_futebol['hora_inicio_h'] = dados_externos_futebol['hora_inicio'].apply(extrair_hora)
-    dados_externos_futebol['hora_fim_h'] = dados_externos_futebol['hora_fim'].apply(extrair_hora)
+    # Criar objetos datetime para início e fim
+    dados_externos_futebol['data_inicio'] = pd.to_datetime(
+        dados_externos_futebol['data'].astype(str) + ' ' + 
+        dados_externos_futebol['hora_inicio_h'].astype(str) + ':00:00'
+    )
     
-    # Combinar data com hora arredondada
-    dados_externos_futebol['data_inicio'] = dados_externos_futebol.apply(lambda x: pd.Timestamp(x['data']).replace(hour=x['hora_inicio_h'], minute=0, second=0), axis=1)
-    dados_externos_futebol['data_fim'] = dados_externos_futebol.apply(lambda x: pd.Timestamp(x['data']).replace(hour=x['hora_fim_h'], minute=59, second=59), axis=1)
+    dados_externos_futebol['data_fim'] = pd.to_datetime(
+        dados_externos_futebol['data'].astype(str) + ' ' + 
+        dados_externos_futebol['hora_fim_h'].astype(str) + ':59:59'
+    )
     
-    # Para cada evento em dados_externos_futebol, marcar os registros em tabela_mae
+    # Criar máscara para todos os eventos
     for _, evento in dados_externos_futebol.iterrows():
-        inicio = evento['data_inicio']
-        fim = evento['data_fim']
-        
-        # Marcar registros dentro do intervalo
-        mascara = (tabela_mae['data_hora'] >= inicio) & (tabela_mae['data_hora'] <= fim)
+        mascara = (tabela_mae['data_hora'] >= evento['data_inicio']) & (tabela_mae['data_hora'] <= evento['data_fim'])
         tabela_mae.loc[mascara, 'EXTERNO_FUTEBOL_CONCORRENTE_ON'] = 1
     
     return tabela_mae
 
-def join_eventos_external_data(tabela_mae):
 
-    df_eventos_externos = pd.read_csv('eventos_externos.csv', sep = ";")
-
-    # Garantir que data_hora em tabela_mae seja datetime
-    if not pd.api.types.is_datetime64_dtype(tabela_mae['data_hora']):
-        tabela_mae['data_hora'] = pd.to_datetime(tabela_mae['data_hora'])
-    
-    # Funções auxiliares para conversão
-    def converter_data(data_str):
-        if pd.isna(data_str) or data_str == '-':
-            return None
-        try:
-            return pd.to_datetime(data_str, format='%d/%m/%y')
-        except:
-            try:
-                return pd.to_datetime(data_str, format='%d/%m/%Y')
-            except:
-                return None
-    
-    def converter_hora(hora_str, tipo):
-        if pd.isna(hora_str) or hora_str == '-':
-            return time(0, 0) if tipo == 'inicio' else time(23, 59, 59)
-        if hora_str == '00:00' and tipo == 'fim':
-            return time(23, 59, 59)  # Tratar 00:00 como final do dia para hora_fim
-        try:
-            return datetime.strptime(hora_str, '%H:%M').time()
-        except:
-            return time(0, 0) if tipo == 'inicio' else time(23, 59, 59)
-    
-    # Para cada evento no dataframe de eventos
-    for _, evento in df_eventos_externos.iterrows():
-        nome_evento = evento['evento'].strip()
-        nome_coluna = f"EXTERNO_{nome_evento}"
-        tabela_mae[nome_coluna] = 0  # Inicializar com 0
-        
-        # Processar dados do evento
-        data_inicio = converter_data(evento['data_inicio'])
-        if data_inicio is None:
-            continue  # Pular evento sem data de início
-        
-        data_fim = converter_data(evento['data_fim'])
-        if data_fim is None:
-            data_fim = pd.Timestamp.max  # Sem fim = infinito
-        
-        hora_inicio = converter_hora(evento['hora_inicio'], 'inicio')
-        hora_fim = converter_hora(evento['hora_fim'], 'fim')
-        atravessa_meia_noite = hora_fim < hora_inicio
-        
-        # Definir a função para verificar se um registro está dentro do evento
-        def esta_no_evento(timestamp):
-            data = timestamp.date()
-            hora = timestamp.time()
-            
-            # Verificar se está dentro do intervalo de datas
-            if data < data_inicio.date() or (data_fim != pd.Timestamp.max and data > data_fim.date()):
-                return False
-            
-            # Caso 1: Evento normal (não atravessa a meia-noite)
-            if not atravessa_meia_noite:
-                return hora_inicio <= hora <= hora_fim
-            
-            # Caso 2: Evento que atravessa a meia-noite
-            
-            # Caso 2.1: Primeiro dia do evento
-            if data == data_inicio.date():
-                return hora >= hora_inicio
-            
-            # Caso 2.2: Último dia do evento (se tiver data_fim)
-            if data_fim != pd.Timestamp.max and data == data_fim.date():
-                return hora <= hora_fim
-            
-            # Caso 2.3: Dias intermediários ou continuação em evento sem fim
-            if data > data_inicio.date() and (data_fim == pd.Timestamp.max or data < data_fim.date()):
-                # Em dias intermediários, considerar tanto a continuação da noite anterior
-                # quanto o início de um novo ciclo do evento
-                return hora <= hora_fim or hora >= hora_inicio
-            
-            return False
-        
-        # Aplicar a função a cada registro
-        tabela_mae[nome_coluna] = tabela_mae['data_hora'].apply(esta_no_evento).astype(int)
-    
-    return tabela_mae
-
-
+@st.cache_data(ttl=3600)  # Cache por 1 hora
 def fetch_all_bcb_economic_indicators(df=None, date_column='data_hora', start_date=None, end_date=None):
     """
     Busca todos os indicadores econômicos do Banco Central e retorna um dataframe final
@@ -229,6 +150,7 @@ def fetch_all_bcb_economic_indicators(df=None, date_column='data_hora', start_da
     # Se temos um dataframe, usamos suas datas, senão criamos um range de datas
     if df is not None:
         # Extrai apenas a parte da data (sem hora) para usar no merge
+        df = df.copy()  # Create a copy to avoid SettingWithCopyWarning
         df['data_apenas'] = pd.to_datetime(df[date_column]).dt.date
         # Convertemos para datetime para garantir o formato correto
         df['data_apenas'] = pd.to_datetime(df['data_apenas'])
@@ -244,16 +166,35 @@ def fetch_all_bcb_economic_indicators(df=None, date_column='data_hora', start_da
         )
         dados_externos = pd.DataFrame({'data_hora': date_range})
     
-    # Buscar e processar cada série
-    for code, name in series_mapping.items():
-        # Adicionando prefixo EXTERNO_ ao nome da série
+    # Busca paralela de dados para todas as séries
+    series_data = {}
+    
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # Submete jobs
+        future_to_series = {
+            executor.submit(fetch_bcb_series, code, name): (code, name) 
+            for code, name in series_mapping.items()
+        }
+        
+        # Processa resultados conforme chegam
+        for future in concurrent.futures.as_completed(future_to_series):
+            code, name = future_to_series[future]
+            try:
+                temp_df = future.result()
+                series_data[(code, name)] = temp_df
+            except Exception as e:
+                print(f"Erro ao buscar série {name}: {e}")
+                series_data[(code, name)] = pd.DataFrame(columns=['data_hora', name])
+    
+    # Processa cada série
+    for (code, name), temp_df in series_data.items():
+        # Adiciona prefixo ao nome da coluna
         prefixed_name = f"EXTERNO_{name}"
-        temp_df = fetch_bcb_series(code, name)
         
         if temp_df.empty:
             dados_externos[prefixed_name] = None
             continue
-            
+        
         if code in [24369, 433]:  # Séries mensais
             # Criar referência ano-mês
             temp_df['year_month'] = temp_df['data_hora'].dt.to_period('M')
@@ -265,14 +206,14 @@ def fetch_all_bcb_economic_indicators(df=None, date_column='data_hora', start_da
             # Mesclar com o dataframe principal
             dados_externos['year_month'] = dados_externos['data_hora'].dt.to_period('M')
             dados_externos = dados_externos.merge(temp_df[['year_month', prefixed_name]], on='year_month', how='left')
-            # FIX: Substituir ffill com inplace=True
+            # Forward fill para valores ausentes
             dados_externos[prefixed_name] = dados_externos[prefixed_name].ffill()
             dados_externos = dados_externos.drop(columns=['year_month'])
         else:  # Séries diárias
             # Renomear a coluna para incluir o prefixo
             temp_df.rename(columns={name: prefixed_name}, inplace=True)
             dados_externos = dados_externos.merge(temp_df[['data_hora', prefixed_name]], on='data_hora', how='left')
-            # FIX: Substituir ffill com inplace=True
+            # Forward fill para valores ausentes
             dados_externos[prefixed_name] = dados_externos[prefixed_name].ffill()
     
     # Se temos um dataframe, fazemos o merge
@@ -291,3 +232,113 @@ def fetch_all_bcb_economic_indicators(df=None, date_column='data_hora', start_da
         return resultado
     else:
         return dados_externos
+
+
+@st.cache_data
+def join_eventos_external_data(tabela_mae):
+    """
+    Versão otimizada da função join_eventos_external_data que processa
+    dados de eventos externos de forma mais eficiente.
+    """
+    df_eventos_externos = pd.read_csv('eventos_externos.csv', sep=";")
+
+    # Garantir que data_hora em tabela_mae seja datetime
+    if not pd.api.types.is_datetime64_dtype(tabela_mae['data_hora']):
+        tabela_mae['data_hora'] = pd.to_datetime(tabela_mae['data_hora'])
+    
+    # Criar uma cópia para evitar SettingWithCopyWarning
+    tabela_mae = tabela_mae.copy()
+    
+    # Pré-processar dados de eventos
+    df_eventos_externos = df_eventos_externos.copy()
+    
+    # Criar todas as colunas de eventos de uma vez
+    event_columns = {}
+    for evento in df_eventos_externos['evento'].unique():
+        col_name = f"EXTERNO_{evento.strip()}"
+        event_columns[col_name] = np.zeros(len(tabela_mae))
+    
+    # Criar um DataFrame com as novas colunas
+    evento_df = pd.DataFrame(event_columns, index=tabela_mae.index)
+    
+    # Adicionar colunas de eventos ao tabela_mae
+    tabela_mae = pd.concat([tabela_mae, evento_df], axis=1)
+    
+    # Converter colunas de data em df_eventos_externos
+    def convert_date(x):
+        if pd.isna(x) or x == '-':
+            return None
+        try:
+            return pd.to_datetime(x, format='%d/%m/%y')
+        except:
+            try:
+                return pd.to_datetime(x, format='%d/%m/%Y')
+            except:
+                return None
+    
+    # Conversão vetorizada para colunas de data
+    df_eventos_externos['data_inicio'] = df_eventos_externos['data_inicio'].apply(convert_date)
+    df_eventos_externos['data_fim'] = df_eventos_externos['data_fim'].apply(convert_date)
+    
+    # Definir data final ausente para data máxima
+    df_eventos_externos.loc[df_eventos_externos['data_fim'].isna(), 'data_fim'] = pd.Timestamp.max
+    
+    # Processar horários
+    def get_hour_from_time(time_str, is_end=False):
+        if pd.isna(time_str) or time_str == '-':
+            return 0 if not is_end else 23
+        if time_str == '00:00' and is_end:
+            return 23
+        try:
+            return int(time_str.split(':')[0])
+        except:
+            return 0 if not is_end else 23
+    
+    df_eventos_externos['hora_inicio_num'] = df_eventos_externos['hora_inicio'].apply(
+        lambda x: get_hour_from_time(x, False))
+    df_eventos_externos['hora_fim_num'] = df_eventos_externos['hora_fim'].apply(
+        lambda x: get_hour_from_time(x, True))
+    
+    # Processar cada evento
+    for _, evento in df_eventos_externos.iterrows():
+        col_name = f"EXTERNO_{evento['evento'].strip()}"
+        
+        # Pular eventos sem data de início
+        if pd.isna(evento['data_inicio']):
+            continue
+        
+        start_date = evento['data_inicio']
+        end_date = evento['data_fim']
+        start_hour = evento['hora_inicio_num']
+        end_hour = evento['hora_fim_num']
+        
+        # Verificar se o evento atravessa a meia-noite
+        spans_midnight = end_hour < start_hour
+        
+        # Para cada timestamp em tabela_mae, verificar se está dentro deste evento
+        # Abordagem vetorizada usando máscaras
+        date_mask = (tabela_mae['data_hora'].dt.date >= start_date.date()) & \
+                   ((end_date == pd.Timestamp.max) | (tabela_mae['data_hora'].dt.date <= end_date.date()))
+        
+        if not spans_midnight:
+            # Evento no mesmo dia, não atravessa a meia-noite
+            hour_mask = (tabela_mae['data_hora'].dt.hour >= start_hour) & \
+                        (tabela_mae['data_hora'].dt.hour <= end_hour)
+            final_mask = date_mask & hour_mask
+        else:
+            # Evento atravessa a meia-noite
+            first_day_mask = (tabela_mae['data_hora'].dt.date == start_date.date()) & \
+                            (tabela_mae['data_hora'].dt.hour >= start_hour)
+            
+            last_day_mask = ((end_date != pd.Timestamp.max) & \
+                            (tabela_mae['data_hora'].dt.date == end_date.date()) & \
+                            (tabela_mae['data_hora'].dt.hour <= end_hour))
+            
+            middle_days_mask = (tabela_mae['data_hora'].dt.date > start_date.date()) & \
+                              ((end_date == pd.Timestamp.max) | (tabela_mae['data_hora'].dt.date < end_date.date()))
+            
+            final_mask = first_day_mask | last_day_mask | middle_days_mask
+        
+        tabela_mae.loc[final_mask, col_name] = 1
+    
+    return tabela_mae

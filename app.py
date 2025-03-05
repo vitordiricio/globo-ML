@@ -63,7 +63,7 @@ def main():
 
 
             st.subheader("Pré-visualização dos Dados juntos")
-            st.dataframe(df_merged.head(5), hide_index=True, height=250)
+            st.dataframe(df_merged, hide_index=True, height=250)
             
             # Exibe o heatmap de correlação
             plot_heatmap_correlation_total(df_merged)

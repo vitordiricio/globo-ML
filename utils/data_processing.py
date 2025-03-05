@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import numpy as np
 
 
+@st.cache_data
 def fill_hourly_gaps(df, datetime_column):
     """
     Fill gaps in hourly data with zeros for all metric columns using an optimized approach.
@@ -46,7 +47,7 @@ def fill_hourly_gaps(df, datetime_column):
     return filled_df
 
 
-
+@st.cache_data
 def tratar_redes_sociais_canais(df):
     """
     Função específica para tratar os dados de redes sociais dos canais (G1, GE, GSHOW, ETC.)
@@ -89,6 +90,7 @@ def tratar_redes_sociais_canais(df):
     return result_df
 
 
+@st.cache_data
 def tratar_redes_sociais_linear(df):
     """
     Função específica para tratar os dados de redes sociais.
@@ -149,6 +151,7 @@ def tratar_redes_sociais_linear(df):
     return df_final
 
 
+@st.cache_data
 def tratar_globoplay(df):
     """
     Função específica para tratar os dados do GloboPlay.
@@ -181,6 +184,7 @@ def tratar_globoplay(df):
     return df_horas
 
 
+@st.cache_data
 def tratar_tv_linear(df):
     """
     Process TV linear data by filtering, formatting, adjusting times and calculating metrics.
@@ -198,7 +202,7 @@ def tratar_tv_linear(df):
     df['hora_inicio'] = df['faixas_horárias'].str.split(' - ').str[0].apply(lambda x: f"{int(x.split(':')[0]) % 24:02d}:{x.split(':')[1]}")
     df['data_hora'] = pd.to_datetime(df['datas'] + ' ' + df['hora_inicio'], format='%d/%m/%Y %H:%M')
     df = df[['data_hora','emissoras', 'rat%', 'shr%', 'tvr%', 'rat#', 'avrch%_wavg', 'cov%', 'fid%_org', 'tvr#']]
-    df['emissoras'] = df['emissoras'].str.replace('‘', '').str.replace('’', '').str.replace(' - ', ' ').str.replace('é', 'e').str.replace(' ', '_')
+    df['emissoras'] = df['emissoras'].str.replace(''', '').str.replace(''', '').str.replace(' - ', ' ').str.replace('é', 'e').str.replace(' ', '_')
 
     # Transformação para formato wide
     df_melted = df.melt(
@@ -252,14 +256,14 @@ def carregar_e_tratar_dados():
             try:
                 # Added low_memory=False to fix the DtypeWarning
                 df_redes_sociais_canais = pd.read_csv('redes_sociais_canais.csv', 
-                          encoding='latin-1',  # or 'cp1252' for Windows encoding
-                          sep=';',             # Use semicolon as delimiter
-                          quotechar='"',       # Specify quote character
-                          doublequote=True,    # Handle double quotes within fields
-                          lineterminator='\n', # Explicit line terminator
-                          escapechar='\\',     # Escape character for special chars
-                          on_bad_lines='skip', # Skip bad lines
-                          low_memory=False)    # Added to fix DtypeWarning
+                          encoding='latin-1',
+                          sep=';',
+                          quotechar='"',
+                          doublequote=True,
+                          lineterminator='\n',
+                          escapechar='\\',
+                          on_bad_lines='skip',
+                          low_memory=False)
                 df_redes_sociais_canais = tratar_redes_sociais_canais(df_redes_sociais_canais)
                 st.success("Arquivo de redes sociais processado!")
             except Exception as e:
@@ -295,6 +299,7 @@ def carregar_e_tratar_dados():
     return df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear
 
 
+@st.cache_data
 def merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear):
     """
     Merge data from social media, Globoplay, and linear TV, keeping only data points
@@ -323,7 +328,7 @@ def merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_li
     # df_tv_linear already has 'data_hora' as column name
     
     # Add prefixes to column names except for 'data_hora'
-    # 1. For tv_linear dataframe add TVGLOBO_ prefix
+    # 1. For tv_linear dataframe add LINEAR_ prefix
     prefix_columns = {col: f'LINEAR_{col}' for col in df_tv_linear.columns if col != 'data_hora'}
     df_tv_linear = df_tv_linear.rename(columns=prefix_columns)
     
@@ -339,33 +344,27 @@ def merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_li
     prefix_columns = {col: f'GP_{col}' for col in df_globo.columns if col != 'data_hora'}
     df_globo = df_globo.rename(columns=prefix_columns)
     
-    # Perform inner merge to keep only data present in all three dataframes
-    df_merged = pd.merge(
-        df_redes,
-        df_redes_sociais_canais,
-        on='data_hora',
-        how='inner'
-    )
+    # Otimização: Encontrar timestamps comuns antes de fazer o merge
+    df_redes.set_index('data_hora', inplace=True)
+    df_redes_sociais_canais.set_index('data_hora', inplace=True)
+    df_tv_linear.set_index('data_hora', inplace=True)
+    df_globo.set_index('data_hora', inplace=True)
     
-    # Merge with TV linear data
-    df_merged = pd.merge(
-        df_merged,
-        df_tv_linear,
-        on='data_hora',
-        how='inner'  # Using inner join to keep only common timestamps
-    )
-
-    # Merge with TV linear data
-    df_merged = pd.merge(
-        df_merged,
-        df_globo,
-        on='data_hora',
-        how='inner'  # Using inner join to keep only common timestamps
-    )
+    # Encontrar timestamps comuns
+    common_dates = df_redes.index.intersection(df_redes_sociais_canais.index)
+    common_dates = common_dates.intersection(df_tv_linear.index)
+    common_dates = common_dates.intersection(df_globo.index)
     
-    # Aggregate by hour if needed (in case there are duplicate entries)
-    df_merged = df_merged.groupby('data_hora', as_index=False).sum()
-
+    # Filtrar dataframes para timestamps comuns
+    df_redes = df_redes.loc[common_dates]
+    df_redes_sociais_canais = df_redes_sociais_canais.loc[common_dates]
+    df_tv_linear = df_tv_linear.loc[common_dates]
+    df_globo = df_globo.loc[common_dates]
+    
+    # Concatenar todos os dataframes
+    df_merged = pd.concat([df_redes, df_redes_sociais_canais, df_tv_linear, df_globo], axis=1)
+    df_merged = df_merged.reset_index()
+    
     # Replace None with np.nan (if any)
     df_merged = df_merged.replace({None: np.nan})
 
@@ -377,7 +376,7 @@ def merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_li
     
     return df_merged
 
-
+@st.cache_data
 def convert_non_numeric_to_codes(df):
     """
     Converte colunas não numéricas em códigos numéricos para cálculos de correlação.
@@ -389,6 +388,7 @@ def convert_non_numeric_to_codes(df):
     return df_copy
 
 
+@st.cache_data
 def calculate_correlation_series(df, target):
     """
     Calcula a correlação de cada coluna com a variável alvo.
