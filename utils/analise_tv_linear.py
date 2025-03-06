@@ -2,9 +2,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
-import numpy as np
-from datetime import datetime, timedelta
 
 def analise_tv_linear(df):
     """
@@ -29,7 +26,6 @@ def analise_tv_linear(df):
         df['data_hora'] = pd.to_datetime(df['data_hora'])
     
     # Create copies of the dataframe for each granularity
-    df_hourly = df.copy()
     
     # Create daily aggregation
     df_daily = df.copy()
@@ -45,6 +41,10 @@ def analise_tv_linear(df):
     
     # 2. Metrics Tables for each granularity
     st.subheader("Métricas Resumidas")
+
+    st.markdown("""
+    Nesta seção, você encontra um resumo das principais métricas da TV Linear, organizadas por diferentes granularidades de tempo: semana, dia ou hora. Use o filtro de tempo no topo da tela para alternar entre essas visões. As métricas apresentadas incluem cov% (cobertura), shr% (share de audiência) e TVR% (telespectadores por ponto de audiência), cada uma com seu valor médio, desvio padrão e quantidade de registros.
+    """)
     
     # Check if we have the required columns
     required_cols = [
@@ -53,7 +53,7 @@ def analise_tv_linear(df):
     
     if all(col in df.columns for col in required_cols):
         # Create three columns for layout
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         
         # Function to create metrics table
         def create_metrics_table(data_df, granularity_name):
@@ -69,10 +69,12 @@ def analise_tv_linear(df):
                     "Métrica": label,
                     "Valor Médio": f"{data_df[col_name].mean():.2f}",
                     "Desvio Padrão": f"{data_df[col_name].std():.2f}",
+                    "Número de Linhas": f"{len(data_df)}"
                 })
             
             return pd.DataFrame(metrics_data)
         
+
         # Display tables in each column
         with col1:
             st.markdown("### Semanal")
@@ -82,14 +84,19 @@ def analise_tv_linear(df):
             st.markdown("### Diário")
             st.dataframe(create_metrics_table(df_daily, "Diário"), hide_index=True)
         
-        with col3:
-            st.markdown("### Horário")
-            st.dataframe(create_metrics_table(df_hourly, "Horário"), hide_index=True)
     else:
         st.warning("Dados insuficientes para exibir métricas. Alguns dados podem estar faltando.")
     
     # 3. Evolution Chart with Metric Selection
     st.subheader("Evolução da Audiência vs Concorrentes")
+    st.markdown("""
+
+    Esta análise apresenta dois níveis de comparação de audiência:
+
+    **1. Visão Geral:** Mostra **a performance consolidada da Globo comparada à média dos concorrentes** em cada uma das métricas principais: **cov%**, **shr%** e **TVR%**. Use o filtro de métrica para alternar entre essas visões. O gráfico mostra a evolução da Globo e da concorrência ao longo do tempo, ajudando a identificar se há tendência de ganho ou perda de audiência relativa.
+
+    **2. Comparação Específica:** Aqui você pode comparar diretamente a Globo com **qualquer concorrente específico** (SBT, Record, Band, etc). Escolha o concorrente desejado no filtro e selecione qual métrica quer visualizar (cov%, shr%, TVR%). O gráfico mostra a evolução lado a lado, enquanto a tabela abaixo traz **indicadores estatísticos** da relação entre Globo e esse concorrente.
+    """)
     
     # Get competitor channels (those with LINEAR_ prefix but not GLOBO)
     competitors = [col.split('_')[1] for col in df.columns 
@@ -105,9 +112,8 @@ def analise_tv_linear(df):
     
     # Granularity selection in first column
     granularity_options = {
-        "Semanal": df_weekly,
         "Diário": df_daily,
-        "Horário": df_hourly
+        "Semanal": df_weekly,
     }
     
     with col1:

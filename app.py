@@ -21,6 +21,7 @@ from utils.ml_models import AVAILABLE_MODELS
 from utils.analises_estaticas import analise_redes_sociais, analise_fatores_externos, analise_grandes_eventos, analise_percepcao_marca, analise_social_impacto, analise_streaming_vs_linear
 
 from utils.analise_tv_linear import analise_tv_linear
+from utils.globplay import analise_globoplay
 
 def main():
     configurar_pagina()
@@ -43,9 +44,7 @@ def main():
     )
     
     # Menu de navegação na sidebar
-    menu_options = ["1. TV LINEAR","Análise de Redes Sociais", "Streaming vs TV Linear", 
-                    "Impacto do Social", "Grandes Eventos", "Fatores Externos", 
-                    "Percepção de Marca", "Playground" ]
+    menu_options = ["1️⃣ TV LINEAR", "2️⃣ GLOBOPLAY", "3️⃣ REDES SOCIAIS", "4️⃣ CRENÇAS", "Playground" ]
     page = st.sidebar.radio("Selecione a página", menu_options)
     
     # --- Carregamento dos dados ---
@@ -329,60 +328,41 @@ def main():
             st.info("Por favor, faça o upload dos dados para prosseguir.")
 
     # Página de TV LINEAR
-    elif page == "1. TV LINEAR":
-        st.title("1. TV LINEAR")
+    elif page == "1️⃣ TV LINEAR":
+        st.title("1️⃣ TV LINEAR")
         if df_merged is not None:
             analise_tv_linear(df_merged)
         else:
             st.warning("Por favor, faça o upload dos dados de redes sociais na Home primeiro.")
+
+    # Página de Análise de Redes Sociais
+    elif page == "2️⃣ GLOBOPLAY":
+        st.title("2️⃣ GLOBOPLAY")
+        if df_merged is not None:
+            analise_globoplay(df_merged)
+        else:
+            st.warning("Por favor, faça o upload dos dados de redes sociais na Home primeiro.")
     
     # Página de Análise de Redes Sociais
-    elif page == "Análise de Redes Sociais":
-        st.title("Análise de Redes Sociais")
+    elif page == "3️⃣ REDES SOCIAIS":
+        st.title("3️⃣ REDES SOCIAIS")
         if df_redes_sociais is not None:
             analise_redes_sociais(df_redes_sociais)
         else:
             st.warning("Por favor, faça o upload dos dados de redes sociais na Home primeiro.")
-    
+
     # Página Streaming vs TV Linear
-    elif page == "Streaming vs TV Linear":
-        st.title("Streaming vs TV Linear")
+    elif page == "4️⃣ CRENÇAS":
+        st.title("4️⃣ CRENÇAS")
         if df_merged is not None:
             analise_streaming_vs_linear(df_merged)
-        else:
-            st.warning("Por favor, faça o upload de todos os dados na Home primeiro.")
-    
-    # Página Impacto do Social
-    elif page == "Impacto do Social":
-        st.title("Impacto do Social")
-        if df_merged is not None:
             analise_social_impacto(df_merged)
-        else:
-            st.warning("Por favor, faça o upload de todos os dados na Home primeiro.")
-    
-    # Página Grandes Eventos
-    elif page == "Grandes Eventos":
-        st.title("Grandes Eventos")
-        if df_merged is not None:
             analise_grandes_eventos(df_merged)
-        else:
-            st.warning("Por favor, faça o upload de todos os dados na Home primeiro.")
-    
-    # Página Fatores Externos
-    elif page == "Fatores Externos":
-        st.title("Fatores Externos")
-        if df_merged is not None:
             analise_fatores_externos(df_merged)
-        else:
-            st.warning("Por favor, faça o upload de todos os dados na Home primeiro.")
-    
-    # Página Percepção de Marca
-    elif page == "Percepção de Marca":
-        st.title("Percepção de Marca")
-        if df_merged is not None:
             analise_percepcao_marca(df_merged)
         else:
             st.warning("Por favor, faça o upload de todos os dados na Home primeiro.")
+    
     
     st.markdown("---\nFeito com ❤️ FCamara | Value Creation | Sales Boost")
 
