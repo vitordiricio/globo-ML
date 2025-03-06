@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 import numpy as np
 from scipy import stats
 
+@st.cache_data
 def analise_redes_sociais(df):
     """
     Realiza análises estáticas de redes sociais utilizando o dataframe tratado,
@@ -170,7 +171,7 @@ def analise_redes_sociais(df):
     quais plataformas priorizar para determinados tipos de conteúdo, e como balancear a distribuição de recursos entre canais.
     """)
 
-
+@st.cache_data
 def analise_streaming_vs_linear(df):
     """
     Análise para responder perguntas sobre como o streaming está impactando a TV linear.
@@ -480,7 +481,7 @@ def analise_streaming_vs_linear(df):
     else:
         st.warning("Dados insuficientes para realizar a análise. É necessário ter métricas de Globoplay (GP_) e TV Linear (LINEAR_).")
 
-
+@st.cache_data
 def analise_social_impacto(df):
     """
     Análise para responder perguntas sobre como os sites e redes sociais impactam a TV linear.
@@ -981,7 +982,7 @@ def analise_social_impacto(df):
     else:
         st.warning("Dados insuficientes para realizar a análise. É necessário ter métricas de Redes Sociais (RS_) e TV Linear (LINEAR_).")
 
-
+@st.cache_data
 def analise_grandes_eventos(df):
     """
     Análise para responder perguntas sobre como os grandes eventos impactam a audiência.
@@ -1485,7 +1486,7 @@ def analise_grandes_eventos(df):
     else:
         st.warning("Dados insuficientes para realizar a análise. É necessário ter informações sobre eventos externos.")
 
-
+@st.cache_data
 def analise_fatores_externos(df):
     """
     Análise para responder perguntas sobre como fatores externos impactam a audiência.
@@ -1756,7 +1757,7 @@ def analise_fatores_externos(df):
     else:
         st.warning("Dados insuficientes para realizar a análise. É necessário ter informações sobre indicadores econômicos externos.")
 
-
+@st.cache_data
 def analise_percepcao_marca(df):
     """
     Análise para responder perguntas sobre como a percepção da marca influencia a audiência.

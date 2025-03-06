@@ -20,6 +20,8 @@ from utils.ml_models import AVAILABLE_MODELS
 
 from utils.analises_estaticas import analise_redes_sociais, analise_fatores_externos, analise_grandes_eventos, analise_percepcao_marca, analise_social_impacto, analise_streaming_vs_linear
 
+from utils.analise_tv_linear import analise_tv_linear
+
 def main():
     configurar_pagina()
     mostrar_cabecalho()
@@ -41,7 +43,7 @@ def main():
     )
     
     # Menu de navegação na sidebar
-    menu_options = ["Análise de Redes Sociais", "Streaming vs TV Linear", 
+    menu_options = ["1. TV LINEAR","Análise de Redes Sociais", "Streaming vs TV Linear", 
                     "Impacto do Social", "Grandes Eventos", "Fatores Externos", 
                     "Percepção de Marca", "Playground" ]
     page = st.sidebar.radio("Selecione a página", menu_options)
@@ -63,6 +65,8 @@ def main():
             df_merged = fetch_all_bcb_economic_indicators(df_merged, 'data_hora', min_date, max_date)
             df_merged = join_futebol_external_data(df_merged)
             df_merged = join_tweets(df_merged)
+            df_merged = join_eventos_externos(df_merged)
+            df_merged = df_merged.fillna(0)
     
     # Página Home
     if page == "Playground" :
@@ -323,6 +327,14 @@ def main():
                             st.info("Treine pelo menos um modelo para ver a comparação.")
         else:
             st.info("Por favor, faça o upload dos dados para prosseguir.")
+
+    # Página de TV LINEAR
+    elif page == "1. TV LINEAR":
+        st.title("1. TV LINEAR")
+        if df_merged is not None:
+            analise_tv_linear(df_merged)
+        else:
+            st.warning("Por favor, faça o upload dos dados de redes sociais na Home primeiro.")
     
     # Página de Análise de Redes Sociais
     elif page == "Análise de Redes Sociais":

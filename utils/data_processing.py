@@ -202,7 +202,8 @@ def tratar_tv_linear(df):
     df['hora_inicio'] = df['faixas_horárias'].str.split(' - ').str[0].apply(lambda x: f"{int(x.split(':')[0]) % 24:02d}:{x.split(':')[1]}")
     df['data_hora'] = pd.to_datetime(df['datas'] + ' ' + df['hora_inicio'], format='%d/%m/%Y %H:%M')
     df = df[['data_hora','emissoras', 'rat%', 'shr%', 'tvr%', 'rat#', 'avrch%_wavg', 'cov%', 'fid%_org', 'tvr#']]
-    df['emissoras'] = df['emissoras'].str.replace(''', '').str.replace(''', '').str.replace(' - ', ' ').str.replace('é', 'e').str.replace(' ', '_')
+    df['emissoras'] = df['emissoras'].str.replace(''', '').str.replace(''', '').str.replace(' - ', ' ').str.replace('é', 'e').str.replace(' ', '_').str.replace('‘', '').str.replace('’', '')
+    df['emissoras'] = df['emissoras'].str.replace('TV_BAND', 'TVBAND').str.replace('NI_NIC_ate_Mar19', 'NINICATEHMAR19').str.replace('NI_TOTAL', 'NITOTAL')
 
     # Transformação para formato wide
     df_melted = df.melt(
