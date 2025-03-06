@@ -347,8 +347,8 @@ def main():
     # Página de Análise de Redes Sociais
     elif page == "3️⃣ REDES SOCIAIS":
         st.title("3️⃣ REDES SOCIAIS")
-        if df_redes_sociais is not None:
-            analise_redes_sociais(df_redes_sociais)
+        if df_merged is not None:
+            analise_redes_sociais(df_merged)
         else:
             st.warning("Por favor, faça o upload dos dados de redes sociais na Home primeiro.")
 

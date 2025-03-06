@@ -107,7 +107,7 @@ def analise_globoplay(df):
         }
         
         table1_df = create_metrics_table(selected_df, table1_metrics)
-        st.table(table1_df)
+        st.dataframe(table1_df, hide_index=True)
         
         # Create correlation chart with TV Linear cov%
         if 'LINEAR_GLOBO_cov%' in selected_df.columns:
@@ -201,7 +201,7 @@ def analise_globoplay(df):
         }
         
         table2_df = create_metrics_table(selected_df, table2_metrics)
-        st.table(table2_df)
+        st.dataframe(table2_df, hide_index=True)
         
         # Create correlation chart with TV Linear cov%
         if 'LINEAR_GLOBO_cov%' in selected_df.columns:
@@ -282,7 +282,7 @@ def analise_globoplay(df):
         }
         
         table3_df = create_metrics_table(selected_df, table3_metrics)
-        st.table(table3_df)
+        st.dataframe(table3_df, hide_index=True)
         
         # Create correlation chart with TV Linear cov%
         if 'LINEAR_GLOBO_cov%' in selected_df.columns:
