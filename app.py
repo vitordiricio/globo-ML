@@ -18,10 +18,11 @@ from utils.graphs_views import (
 from utils.external_data import fetch_all_bcb_economic_indicators, join_futebol_external_data, join_eventos_externos, join_tweets
 from utils.ml_models import AVAILABLE_MODELS
 
-from utils.analises_estaticas import analise_redes_sociais, analise_fatores_externos, analise_grandes_eventos, analise_percepcao_marca, analise_social_impacto, analise_streaming_vs_linear
+from utils.analise_crencas import analise_fatores_externos, analise_grandes_eventos, analise_percepcao_marca, analise_social_impacto, analise_streaming_vs_linear
 
 from utils.analise_tv_linear import analise_tv_linear
-from utils.globplay import analise_globoplay
+from utils.analise_globoplay import analise_globoplay
+from utils.analise_redes_sociais import analise_redes_sociais
 
 def main():
     configurar_pagina()

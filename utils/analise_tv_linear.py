@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import numpy as np
 
 def analise_tv_linear(df):
     """
@@ -86,6 +87,26 @@ def analise_tv_linear(df):
         
     else:
         st.warning("Dados insuficientes para exibir métricas. Alguns dados podem estar faltando.")
+
+    # MODIFIED: Moved granularity selector to its own row with explanation
+    st.markdown("### Configuração de Granularidade")
+    
+    # Full width for granularity selector with explanation
+    granularity_options = {
+        "Diário": df_daily,
+        "Semanal": df_weekly,
+    }
+    
+    granularity = st.selectbox(
+        "Selecione a granularidade:",
+        options=list(granularity_options.keys()),
+        help="Recomenda-se usar o valor 'Diário' pois a aplicação atualmente contempla somente os dados de 2024 e 53 semanas é muito pouco para validar dados."
+    )
+    
+    st.markdown("""
+    **Nota:** Recomenda-se utilizar a granularidade **Diária** para análises, pois a aplicação atualmente contempla 
+    somente os dados de 2024, e 53 semanas é uma quantidade muito pequena para validações estatísticas robustas.
+    """)
     
     # 3. Evolution Chart with Metric Selection
     st.subheader("Evolução da Audiência vs Concorrentes")
@@ -107,32 +128,21 @@ def analise_tv_linear(df):
     # Filter out any entries that might contain apostrophes or special characters
     competitors = [comp for comp in competitors if "'" not in comp]
     
-    # Create 3 columns for dropdowns
-    col1, col2, col3 = st.columns(3)
-    
-    # Granularity selection in first column
-    granularity_options = {
-        "Diário": df_daily,
-        "Semanal": df_weekly,
-    }
-    
-    with col1:
-        granularity = st.selectbox(
-            "Selecione a granularidade:",
-            options=list(granularity_options.keys())
-        )
     
     # Get the selected dataframe
     selected_df = granularity_options[granularity]
     
-    # Metric selection in second column
+    # MODIFIED: Keep metric and visualization selectors in two columns
+    col1, col2 = st.columns(2)
+    
+    # Metric selection in first column
     metrics_options = {
         "cov% (cobertura)": "cov%",
         "shr% (share)": "shr%",
         "TVR% (rating)": "tvr%"
     }
     
-    with col2:
+    with col1:
         selected_metric = st.selectbox(
             "Selecione a métrica:",
             options=list(metrics_options.keys())
@@ -140,8 +150,8 @@ def analise_tv_linear(df):
     
     metric_suffix = metrics_options[selected_metric]
     
-    # Competitor selection in third column
-    with col3:
+    # Competitor selection in second column
+    with col2:
         visualization_options = ["Concorrentes Agregados"] + competitors
         selected_viz = st.selectbox(
             "Selecione a visualização:",
@@ -182,6 +192,74 @@ def analise_tv_linear(df):
                     else:
                         trace.line.color = 'gray'
                         trace.line.width = 1.5
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # ADDED: Correlation cards for aggregated competitors - Using the same detailed approach as for specific competitors
+                corr_value = plot_data['Globo'].corr(plot_data['Concorrentes (Média)'])
+                
+                st.subheader(f"Correlação: Globo vs Concorrentes ({selected_metric})")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.metric(
+                        "Correlação Globo vs Concorrentes",
+                        f"{corr_value:.2f}",
+                        delta=None,
+                        delta_color="normal",
+                        help="Uma correlação próxima de 1 indica que Globo e concorrentes tendem a variar juntos, enquanto valores próximos de -1 indicam variação em direções opostas."
+                    )
+                
+                with col2:
+                    # Calculate market share
+                    globo_avg = plot_data['Globo'].mean()
+                    competitors_avg = plot_data['Concorrentes (Média)'].mean()
+                    total_avg = globo_avg + competitors_avg
+                    
+                    if total_avg > 0:
+                        globo_share = (globo_avg / total_avg) * 100
+                        st.metric(
+                            "Participação Média vs Concorrentes",
+                            f"{globo_share:.1f}%",
+                            delta=None,
+                            delta_color="normal",
+                            help="Percentual médio da Globo em relação ao total (Globo + Concorrentes)."
+                        )
+                    else:
+                        st.warning("Dados insuficientes para calcular participação média.")
+                
+                # Add additional correlation analysis
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    corr_interpretation = ""
+                    if corr_value > 0.7:
+                        corr_interpretation = "**Correlação forte positiva**: Globo e concorrentes tendem a ter variações muito semelhantes na audiência, sugerindo que todos são afetados pelos mesmos fatores externos (como feriados, eventos especiais, etc)."
+                    elif corr_value > 0.3:
+                        corr_interpretation = "**Correlação moderada positiva**: Existe alguma tendência de variação similar entre Globo e concorrentes, mas cada um também tem seus próprios padrões distintos."
+                    elif corr_value > -0.3:
+                        corr_interpretation = "**Correlação fraca**: Globo e concorrentes variam independentemente, sugerindo que atendem a públicos diferentes ou que suas estratégias de programação têm efeitos distintos."
+                    elif corr_value > -0.7:
+                        corr_interpretation = "**Correlação moderada negativa**: Quando a audiência da Globo sobe, a dos concorrentes tende a cair moderadamente, e vice-versa, sugerindo algum nível de competição direta pela mesma audiência."
+                    else:
+                        corr_interpretation = "**Correlação forte negativa**: Forte competição direta entre Globo e concorrentes. Quando Globo ganha audiência, os concorrentes perdem, sugerindo grande sobreposição de público-alvo."
+                    
+                    st.markdown(corr_interpretation)
+                
+                with col2:
+                    # Calculate additional statistics
+                    ratio = globo_avg / competitors_avg if competitors_avg > 0 else float('inf')
+                    
+                    if not np.isinf(ratio):
+                        st.markdown(f"""
+                        **Proporção média Globo/Concorrentes**: {ratio:.2f}x
+                        
+                        Isso significa que, em média, a métrica {selected_metric} da Globo 
+                        é {ratio:.2f} vezes maior que a média dos concorrentes.
+                        """)
+                    else:
+                        st.warning("Não foi possível calcular a proporção com os concorrentes.")
             else:
                 # Create line chart with just Globo data
                 fig = px.line(
@@ -195,6 +273,8 @@ def analise_tv_linear(df):
                 # Customize line
                 fig.data[0].line.color = '#0D47A1'  # Azul Globo
                 fig.data[0].line.width = 3
+                
+                st.plotly_chart(fig, use_container_width=True)
                 
                 st.warning("Não foram encontrados dados de concorrentes para comparação agregada.")
         else:  # Specific competitor
@@ -225,6 +305,74 @@ def analise_tv_linear(df):
                     else:
                         trace.line.color = '#757575'  # Gray
                         trace.line.width = 2
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # ADDED: Correlation cards for specific competitor
+                corr_value = plot_data['Globo'].corr(plot_data[selected_competitor])
+                
+                st.subheader(f"Correlação: Globo vs {selected_competitor} ({selected_metric})")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.metric(
+                        f"Correlação Globo vs {selected_competitor}",
+                        f"{corr_value:.2f}",
+                        delta=None,
+                        delta_color="normal",
+                        help="Uma correlação próxima de 1 indica que Globo e o concorrente tendem a variar juntos, enquanto valores próximos de -1 indicam variação em direções opostas."
+                    )
+                
+                with col2:
+                    # Calculate market share
+                    globo_avg = plot_data['Globo'].mean()
+                    competitor_avg = plot_data[selected_competitor].mean()
+                    total_avg = globo_avg + competitor_avg
+                    
+                    if total_avg > 0:
+                        globo_share = (globo_avg / total_avg) * 100
+                        st.metric(
+                            f"Participação Média vs {selected_competitor}",
+                            f"{globo_share:.1f}%",
+                            delta=None,
+                            delta_color="normal",
+                            help=f"Percentual médio da Globo em relação ao total (Globo + {selected_competitor})."
+                        )
+                    else:
+                        st.warning("Dados insuficientes para calcular participação média.")
+                
+                # Add additional correlation analysis
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    corr_interpretation = ""
+                    if corr_value > 0.7:
+                        corr_interpretation = f"**Correlação forte positiva**: Globo e {selected_competitor} tendem a ter variações muito semelhantes na audiência, sugerindo que ambos são afetados pelos mesmos fatores externos (como feriados, eventos especiais, etc)."
+                    elif corr_value > 0.3:
+                        corr_interpretation = f"**Correlação moderada positiva**: Existe alguma tendência de variação similar entre Globo e {selected_competitor}, mas cada um também tem seus próprios padrões distintos."
+                    elif corr_value > -0.3:
+                        corr_interpretation = f"**Correlação fraca**: Globo e {selected_competitor} variam independentemente, sugerindo que atendem a públicos diferentes ou que suas estratégias de programação têm efeitos distintos."
+                    elif corr_value > -0.7:
+                        corr_interpretation = f"**Correlação moderada negativa**: Quando a audiência da Globo sobe, a de {selected_competitor} tende a cair moderadamente, e vice-versa, sugerindo algum nível de competição direta pela mesma audiência."
+                    else:
+                        corr_interpretation = f"**Correlação forte negativa**: Forte competição direta entre Globo e {selected_competitor}. Quando um ganha audiência, o outro perde, sugerindo grande sobreposição de público-alvo."
+                    
+                    st.markdown(corr_interpretation)
+                
+                with col2:
+                    # Calculate additional statistics
+                    ratio = globo_avg / competitor_avg if competitor_avg > 0 else float('inf')
+                    
+                    if not np.isinf(ratio):
+                        st.markdown(f"""
+                        **Proporção média Globo/{selected_competitor}**: {ratio:.2f}x
+                        
+                        Isso significa que, em média, a métrica {selected_metric} da Globo 
+                        é {ratio:.2f} vezes maior que a do {selected_competitor}.
+                        """)
+                    else:
+                        st.warning(f"Não foi possível calcular a proporção com {selected_competitor}.")
             else:
                 # Create line chart with just Globo data
                 fig = px.line(
@@ -239,6 +387,8 @@ def analise_tv_linear(df):
                 fig.data[0].line.color = '#0D47A1'  # Azul Globo
                 fig.data[0].line.width = 3
                 
+                st.plotly_chart(fig, use_container_width=True)
+                
                 st.warning(f"Não foram encontrados dados para o concorrente {selected_competitor}.")
         
         # Update layout
@@ -250,7 +400,6 @@ def analise_tv_linear(df):
             hovermode="x unified"
         )
         
-        st.plotly_chart(fig, use_container_width=True)
     else:
         st.warning("Dados insuficientes para gerar o gráfico de evolução.")
     
