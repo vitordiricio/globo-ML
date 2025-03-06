@@ -15,10 +15,10 @@ from utils.graphs_views import (
     cria_dataframe_correlacao_com_target,
     plot_feature_importance
 )
-from utils.external_data import fetch_all_bcb_economic_indicators, join_futebol_external_data, join_tweets
+from utils.external_data import fetch_all_bcb_economic_indicators, join_futebol_external_data, join_eventos_externos, join_tweets
 from utils.ml_models import AVAILABLE_MODELS
 
-from utils.analises_estaticas import analise_redes_sociais
+from utils.analises_estaticas import analise_redes_sociais, analise_fatores_externos, analise_grandes_eventos, analise_percepcao_marca, analise_social_impacto, analise_streaming_vs_linear
 
 def main():
     configurar_pagina()
@@ -41,29 +41,36 @@ def main():
     )
     
     # Menu de navegação na sidebar
-    menu_options = ["Home", "Análise de Redes Sociais"]
+    menu_options = ["Análise de Redes Sociais", "Streaming vs TV Linear", 
+                    "Impacto do Social", "Grandes Eventos", "Fatores Externos", 
+                    "Percepção de Marca", "Playground" ]
     page = st.sidebar.radio("Selecione a página", menu_options)
     
     # --- Carregamento dos dados ---
     df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear = carregar_e_tratar_dados()
 
+    # Initialize df_merged as None
+    df_merged = None
     
-    
-    # Página Home
-    if page == "Home":
-        st.title("Home")
+    # Create df_merged if all needed dataframes are available
+    if df_redes_sociais is not None and df_redes_sociais_canais is not None and df_globoplay is not None and df_tv_linear is not None:
+        df_merged = merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear)
         
-        if df_redes_sociais is not None and df_redes_sociais_canais is not None and df_globoplay is not None and df_tv_linear is not None:
-            df_merged = merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear)
+        # Apply external data processing only if df_merged was successfully created
+        if df_merged is not None:
             max_date = df_merged['data_hora'].max().strftime('%d/%m/%Y')
             min_date = df_merged['data_hora'].min().strftime('%d/%m/%Y')
             df_merged = fetch_all_bcb_economic_indicators(df_merged, 'data_hora', min_date, max_date)
             df_merged = join_futebol_external_data(df_merged)
             df_merged = join_tweets(df_merged)
-
-
+    
+    # Página Home
+    if page == "Playground" :
+        st.title("Playground" )
+        
+        if df_merged is not None:
             st.subheader("Pré-visualização dos Dados juntos")
-            st.dataframe(df_merged, hide_index=True, height=250)
+            st.dataframe(df_merged.head(5), hide_index=True, height=250)
             
             # Exibe o heatmap de correlação
             plot_heatmap_correlation_total(df_merged)
@@ -86,6 +93,9 @@ def main():
                 st.session_state.selected_features_gp = []
             if 'selected_features_linear' not in st.session_state:
                 st.session_state.selected_features_linear = []
+            # Add session state for external features
+            if 'selected_features_external' not in st.session_state:
+                st.session_state.selected_features_external = []
 
             # Y selection gets full width
             alvo = st.selectbox(
@@ -106,10 +116,13 @@ def main():
                                     if feat != alvo and feat != "Selecionar todas as colunas GP"]
                 updated_features_linear = [feat for feat in st.session_state.selected_features_linear 
                                         if feat != alvo and feat != "Selecionar todas as colunas LINEAR"]
+                updated_features_external = [feat for feat in st.session_state.selected_features_external
+                                          if feat != alvo and feat != "Selecionar todas as colunas EXTERNO"]
                 
                 st.session_state.selected_features_rs = updated_features_rs
                 st.session_state.selected_features_gp = updated_features_gp
                 st.session_state.selected_features_linear = updated_features_linear
+                st.session_state.selected_features_external = updated_features_external
                 st.session_state.previous_alvo = alvo
 
             # Filter columns by prefix
@@ -119,11 +132,13 @@ def main():
                         if col.startswith('GP_') and col != alvo]
             linear_columns = ["Selecionar todas as colunas LINEAR"] + [col for col in df_model.columns 
                             if col.startswith('LINEAR_') and col != alvo]
+            external_columns = ["Selecionar todas as colunas EXTERNO"] + [col for col in df_model.columns
+                             if col.startswith('EXTERNO_') and col != alvo]
 
-            # Create three separate selectors for each prefix
+            # Create four separate selectors for each prefix
             st.markdown("### Selecione as variáveis explicativas (X):")
 
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
             with col1:
                 st.markdown("#### Variáveis de Redes Sociais")
                 selected_rs = st.multiselect(
@@ -144,6 +159,7 @@ def main():
                 )
                 st.session_state.selected_features_gp = selected_gp
 
+            col3, col4 = st.columns(2)
             with col3:
                 st.markdown("#### Variáveis de TV Linear")
                 selected_linear = st.multiselect(
@@ -153,11 +169,21 @@ def main():
                     help="Selecione as features desejadas de TV Linear."
                 )
                 st.session_state.selected_features_linear = selected_linear
+            
+            with col4:
+                st.markdown("#### Variáveis Externas")
+                selected_external = st.multiselect(
+                    "Selecione as variáveis externas:",
+                    options=external_columns,
+                    default=st.session_state.selected_features_external,
+                    help="Selecione dados econômicos, eventos externos e outros fatores."
+                )
+                st.session_state.selected_features_external = selected_external
 
             # Create separate correlation dataframes for each prefix
             st.markdown("### Correlação com variável alvo por tipo de dados:")
             
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
             with col1:
                 st.markdown("#### Redes Sociais")
                 cria_dataframe_correlacao_com_target(df_model, alvo, prefix='RS_')
@@ -166,9 +192,14 @@ def main():
                 st.markdown("#### GloboPlay")
                 cria_dataframe_correlacao_com_target(df_model, alvo, prefix='GP_')
 
+            col3, col4 = st.columns(2)
             with col3:
                 st.markdown("#### TV Linear")
                 cria_dataframe_correlacao_com_target(df_model, alvo, prefix='LINEAR_')
+            
+            with col4:
+                st.markdown("#### Fatores Externos")
+                cria_dataframe_correlacao_com_target(df_model, alvo, prefix='EXTERNO_')
             
             if st.button("Rodar Modelos"):
                 if "models" not in st.session_state:
@@ -195,8 +226,14 @@ def main():
                 else:
                     linear_features = selected_linear
                 
+                external_features = []
+                if "Selecionar todas as colunas EXTERNO" in selected_external:
+                    external_features = [col for col in df_model.columns if col.startswith('EXTERNO_') and col != alvo]
+                else:
+                    external_features = selected_external
+                
                 # Combine all selected features
-                selected_columns = rs_features + gp_features + linear_features
+                selected_columns = rs_features + gp_features + linear_features + external_features
                 
                 if not selected_columns:
                     st.error("Por favor, selecione pelo menos uma variável explicativa (X).")
@@ -294,6 +331,46 @@ def main():
             analise_redes_sociais(df_redes_sociais)
         else:
             st.warning("Por favor, faça o upload dos dados de redes sociais na Home primeiro.")
+    
+    # Página Streaming vs TV Linear
+    elif page == "Streaming vs TV Linear":
+        st.title("Streaming vs TV Linear")
+        if df_merged is not None:
+            analise_streaming_vs_linear(df_merged)
+        else:
+            st.warning("Por favor, faça o upload de todos os dados na Home primeiro.")
+    
+    # Página Impacto do Social
+    elif page == "Impacto do Social":
+        st.title("Impacto do Social")
+        if df_merged is not None:
+            analise_social_impacto(df_merged)
+        else:
+            st.warning("Por favor, faça o upload de todos os dados na Home primeiro.")
+    
+    # Página Grandes Eventos
+    elif page == "Grandes Eventos":
+        st.title("Grandes Eventos")
+        if df_merged is not None:
+            analise_grandes_eventos(df_merged)
+        else:
+            st.warning("Por favor, faça o upload de todos os dados na Home primeiro.")
+    
+    # Página Fatores Externos
+    elif page == "Fatores Externos":
+        st.title("Fatores Externos")
+        if df_merged is not None:
+            analise_fatores_externos(df_merged)
+        else:
+            st.warning("Por favor, faça o upload de todos os dados na Home primeiro.")
+    
+    # Página Percepção de Marca
+    elif page == "Percepção de Marca":
+        st.title("Percepção de Marca")
+        if df_merged is not None:
+            analise_percepcao_marca(df_merged)
+        else:
+            st.warning("Por favor, faça o upload de todos os dados na Home primeiro.")
     
     st.markdown("---\nFeito com ❤️ FCamara | Value Creation | Sales Boost")
 

@@ -74,6 +74,91 @@ def join_futebol_external_data(tabela_mae):
     return tabela_mae
 
 
+def join_eventos_externos(tabela_mae):
+    df_eventos = pd.read_csv('eventos_externos.csv', sep = ";")
+
+    # Garantir que data_hora em tabela_mae seja datetime
+    if not pd.api.types.is_datetime64_dtype(tabela_mae['data_hora']):
+        tabela_mae['data_hora'] = pd.to_datetime(tabela_mae['data_hora'])
+    
+    # Funções auxiliares para conversão
+    def converter_data(data_str):
+        if pd.isna(data_str) or data_str == '-':
+            return None
+        try:
+            return pd.to_datetime(data_str, format='%d/%m/%y')
+        except:
+            try:
+                return pd.to_datetime(data_str, format='%d/%m/%Y')
+            except:
+                return None
+    
+    def converter_hora(hora_str, tipo):
+        if pd.isna(hora_str) or hora_str == '-':
+            return time(0, 0) if tipo == 'inicio' else time(23, 59, 59)
+        if hora_str == '00:00' and tipo == 'fim':
+            return time(23, 59, 59)  # Tratar 00:00 como final do dia para hora_fim
+        try:
+            return datetime.strptime(hora_str, '%H:%M').time()
+        except:
+            return time(0, 0) if tipo == 'inicio' else time(23, 59, 59)
+    
+    # Para cada evento no dataframe de eventos
+    for _, evento in df_eventos.iterrows():
+        nome_evento = evento['evento'].strip()
+        nome_coluna = f"EXTERNO_{nome_evento}"
+        tabela_mae[nome_coluna] = 0  # Inicializar com 0
+        
+        # Processar dados do evento
+        data_inicio = converter_data(evento['data_inicio'])
+        if data_inicio is None:
+            continue  # Pular evento sem data de início
+        
+        data_fim = converter_data(evento['data_fim'])
+        if data_fim is None:
+            data_fim = pd.Timestamp.max  # Sem fim = infinito
+        
+        hora_inicio = converter_hora(evento['hora_inicio'], 'inicio')
+        hora_fim = converter_hora(evento['hora_fim'], 'fim')
+        atravessa_meia_noite = hora_fim < hora_inicio
+        
+        # Definir a função para verificar se um registro está dentro do evento
+        def esta_no_evento(timestamp):
+            data = timestamp.date()
+            hora = timestamp.time()
+            
+            # Verificar se está dentro do intervalo de datas
+            if data < data_inicio.date() or (data_fim != pd.Timestamp.max and data > data_fim.date()):
+                return False
+            
+            # Caso 1: Evento normal (não atravessa a meia-noite)
+            if not atravessa_meia_noite:
+                return hora_inicio <= hora <= hora_fim
+            
+            # Caso 2: Evento que atravessa a meia-noite
+            
+            # Caso 2.1: Primeiro dia do evento
+            if data == data_inicio.date():
+                return hora >= hora_inicio
+            
+            # Caso 2.2: Último dia do evento (se tiver data_fim)
+            if data_fim != pd.Timestamp.max and data == data_fim.date():
+                return hora <= hora_fim
+            
+            # Caso 2.3: Dias intermediários ou continuação em evento sem fim
+            if data > data_inicio.date() and (data_fim == pd.Timestamp.max or data < data_fim.date()):
+                # Em dias intermediários, considerar tanto a continuação da noite anterior
+                # quanto o início de um novo ciclo do evento
+                return hora <= hora_fim or hora >= hora_inicio
+            
+            return False
+        
+        # Aplicar a função a cada registro
+        tabela_mae[nome_coluna] = tabela_mae['data_hora'].apply(esta_no_evento).astype(int)
+    
+    return tabela_mae
+
+
 @st.cache_data(ttl=3600)  # Cache por 1 hora
 def fetch_all_bcb_economic_indicators(df=None, date_column='data_hora', start_date=None, end_date=None):
     """
