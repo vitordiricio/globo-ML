@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime, timedelta
 from scipy import stats
+from plotly.subplots import make_subplots
 
 def analise_globoplay(df):
     """
@@ -420,17 +421,35 @@ def analise_globoplay(df):
         y_cols = [col for col in plot_data.columns if col != 'Data']
         
         if y_cols:  # Only create chart if we have y data
-            # Create line chart
-            fig = px.line(
-                plot_data, 
-                x='Data', 
-                y=y_cols,
-                title=f"Engajamento por Tipo de Usuário - {granularity}",
-                labels={'value': 'Valor', 'variable': 'Métrica'}
-            )
+            # Separar as colunas para eixos esquerdo e direito
+            left_y_cols = [col for col in y_cols if col != 'cov% TV Linear']
+            right_y_cols = ['cov% TV Linear'] if 'cov% TV Linear' in y_cols else []
             
-            # Update layout
+            # Criar figura com subplots compartilhando o eixo x
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+            
+            # Adicionar linhas para o eixo esquerdo
+            for col in left_y_cols:
+                fig.add_trace(
+                    go.Scatter(x=plot_data['Data'], y=plot_data[col], name=col),
+                    secondary_y=False
+                )
+            
+            # Adicionar linhas para o eixo direito
+            for col in right_y_cols:
+                fig.add_trace(
+                    go.Scatter(x=plot_data['Data'], y=plot_data[col], name=col),
+                    secondary_y=True
+                )
+            
+            # Atualizar títulos dos eixos
+            fig.update_yaxes(title_text="Horas Consumidas", secondary_y=False)
+            fig.update_yaxes(title_text="Coverage %", secondary_y=True)
+            fig.update_xaxes(title_text="Data")
+            
+            # Configurar layout
             fig.update_layout(
+                title=f"Engajamento por Tipo de Usuário - {granularity}",
                 font=dict(family="Roboto, Arial", color="#212121"),
                 legend=dict(orientation="h", y=1.1),
                 margin=dict(t=50, l=50, r=20, b=50),
@@ -438,7 +457,7 @@ def analise_globoplay(df):
             )
             
             st.plotly_chart(fig, use_container_width=True)
-    
+        
     # Row 2 - Mobile vs Outros Devices
     has_device_data = any(col in selected_df.columns for col in [
         'GP_horas_consumidas_mobile', 
@@ -464,17 +483,39 @@ def analise_globoplay(df):
         y_cols = [col for col in plot_data.columns if col != 'Data']
         
         if y_cols:  # Only create chart if we have y data
-            # Create line chart
-            fig = px.line(
-                plot_data, 
-                x='Data', 
-                y=y_cols,
-                title=f"Engajamento por Tipo de Device - {granularity}",
-                labels={'value': 'Valor', 'variable': 'Métrica'}
-            )
+            # Separar as colunas para eixos esquerdo e direito
+            left_y_cols = [col for col in y_cols if col != 'cov% TV Linear']
+            right_y_cols = ['cov% TV Linear'] if 'cov% TV Linear' in y_cols else []
             
-            # Update layout
+            # Importar módulos necessários (adicione no início do arquivo)
+            # from plotly.subplots import make_subplots
+            # import plotly.graph_objects as go
+            
+            # Criar figura com subplots compartilhando o eixo x
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+            
+            # Adicionar linhas para o eixo esquerdo
+            for col in left_y_cols:
+                fig.add_trace(
+                    go.Scatter(x=plot_data['Data'], y=plot_data[col], name=col),
+                    secondary_y=False
+                )
+            
+            # Adicionar linhas para o eixo direito
+            for col in right_y_cols:
+                fig.add_trace(
+                    go.Scatter(x=plot_data['Data'], y=plot_data[col], name=col),
+                    secondary_y=True
+                )
+            
+            # Atualizar títulos dos eixos
+            fig.update_yaxes(title_text="Horas Consumidas", secondary_y=False)
+            fig.update_yaxes(title_text="Coverage %", secondary_y=True)
+            fig.update_xaxes(title_text="Data")
+            
+            # Configurar layout
             fig.update_layout(
+                title=f"Engajamento por Tipo de Device - {granularity}",
                 font=dict(family="Roboto, Arial", color="#212121"),
                 legend=dict(orientation="h", y=1.1),
                 margin=dict(t=50, l=50, r=20, b=50),
@@ -508,17 +549,35 @@ def analise_globoplay(df):
         y_cols = [col for col in plot_data.columns if col != 'Data']
         
         if y_cols:  # Only create chart if we have y data
-            # Create line chart
-            fig = px.line(
-                plot_data, 
-                x='Data', 
-                y=y_cols,
-                title=f"Simulcasting vs VOD - {granularity}",
-                labels={'value': 'Valor', 'variable': 'Métrica'}
-            )
+            # Vamos supor que queremos 'cov% TV Linear' no eixo direito
+            left_y_cols = [col for col in y_cols if col != 'cov% TV Linear']
+            right_y_cols = ['cov% TV Linear'] if 'cov% TV Linear' in y_cols else []
             
-            # Update layout
+            # Criar figura com subplots compartilhando o eixo x
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+            
+            # Adicionar linhas para o eixo esquerdo
+            for col in left_y_cols:
+                fig.add_trace(
+                    go.Scatter(x=plot_data['Data'], y=plot_data[col], name=col),
+                    secondary_y=False
+                )
+            
+            # Adicionar linhas para o eixo direito
+            for col in right_y_cols:
+                fig.add_trace(
+                    go.Scatter(x=plot_data['Data'], y=plot_data[col], name=col),
+                    secondary_y=True
+                )
+            
+            # Atualizar títulos dos eixos
+            fig.update_yaxes(title_text="Horas", secondary_y=False)
+            fig.update_yaxes(title_text="Coverage %", secondary_y=True)
+            fig.update_xaxes(title_text="Data")
+            
+            # Configurar layout
             fig.update_layout(
+                title=f"Simulcasting vs VOD - {granularity}",
                 font=dict(family="Roboto, Arial", color="#212121"),
                 legend=dict(orientation="h", y=1.1),
                 margin=dict(t=50, l=50, r=20, b=50),

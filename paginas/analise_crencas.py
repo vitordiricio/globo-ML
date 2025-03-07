@@ -193,7 +193,7 @@ def analise_streaming_vs_linear(df):
         numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
         
         # Analisar consumo por período
-        df_periodo = df.groupby('periodo')[numeric_cols].mean().reset_index()
+        df_periodo = df.groupby('periodo', observed=True)[numeric_cols].mean().reset_index()
         
         # Verificar se as colunas existem
         if 'GP_usuários_assinantes_' in df_periodo.columns and 'LINEAR_GLOBO_rat%' in df_periodo.columns:
@@ -234,7 +234,7 @@ def analise_streaming_vs_linear(df):
                 )
                 
                 # Calcular rating médio de TV Linear para cada bin
-                rating_by_gp_bin = df_temp.groupby('gp_users_bin')['LINEAR_GLOBO_rat%'].mean().reset_index()
+                rating_by_gp_bin = df_temp.groupby('gp_users_bin', observed=True)['LINEAR_GLOBO_rat%'].mean().reset_index()
                 
                 fig = px.bar(rating_by_gp_bin, x='gp_users_bin', y='LINEAR_GLOBO_rat%',
                             title='Rating TV Linear por Nível de Uso do Globoplay',

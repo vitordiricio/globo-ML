@@ -38,7 +38,8 @@ def analise_tv_linear(df):
     # Create weekly aggregation
     df_weekly = df.copy()
     df_weekly['semana'] = df_weekly['data_hora'].dt.to_period('W').astype(str)
-    df_weekly = df_weekly.groupby('semana').mean().reset_index()
+    numeric_cols = df_weekly.select_dtypes(include=['number']).columns.tolist()
+    df_weekly = df_weekly.groupby('semana')[numeric_cols].mean().reset_index()
     df_weekly['data_hora'] = pd.to_datetime(df_weekly['semana'].str.split('/').str[0])
     
     # 2. Metrics Tables for each granularity
