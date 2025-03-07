@@ -26,7 +26,7 @@ def join_tweets(tabela_mae):
         tabela_mae,
         tweets,
         on='data_hora',
-        how='inner'  # Using inner join to keep only common timestamps
+        how='left'  # Using inner join to keep only common timestamps
     )
 
     return df_merged

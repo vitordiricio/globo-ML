@@ -231,9 +231,24 @@ def carregar_e_tratar_dados():
     Returns:
         tuple: DataFrames tratados (redes_sociais, globoplay, tv_linear)
     """
-    st.subheader("Upload dos dados")
+    # Check if data is already available in session state
+    if ('df_redes_sociais' in st.session_state and 
+        'df_redes_sociais_canais' in st.session_state and 
+        'df_globoplay' in st.session_state and 
+        'df_tv_linear' in st.session_state):
+        
+        # Use data from session state
+        return (st.session_state.df_redes_sociais, 
+                st.session_state.df_redes_sociais_canais, 
+                st.session_state.df_globoplay, 
+                st.session_state.df_tv_linear)
     
-    # Criar três colunas
+    # If not in session state, show file uploaders and warning
+    st.subheader("Upload dos dados")
+    st.warning("⚠️ Para uma experiência melhor, recomendamos fazer o upload dos dados na página 'Setup'.")
+    
+    # Original file upload code remains here...
+    # Criar quatro colunas
     col1, col2, col3, col4 = st.columns(4)
     
     # Primeira coluna - Redes Sociais
@@ -256,7 +271,7 @@ def carregar_e_tratar_dados():
         if arquivo_redes_sociais_canais is not None:
             try:
                 # Added low_memory=False to fix the DtypeWarning
-                df_redes_sociais_canais = pd.read_csv('redes_sociais_canais.csv', 
+                df_redes_sociais_canais = pd.read_csv(arquivo_redes_sociais_canais, 
                           encoding='latin-1',
                           sep=';',
                           quotechar='"',
@@ -269,7 +284,6 @@ def carregar_e_tratar_dados():
                 st.success("Arquivo de redes sociais processado!")
             except Exception as e:
                 st.error(f"Erro ao processar arquivo: {str(e)}")
-
     
     # Segunda coluna - GloboPlay
     with col3:
@@ -297,8 +311,31 @@ def carregar_e_tratar_dados():
             except Exception as e:
                 st.error(f"Erro ao processar arquivo: {str(e)}")
     
+    # If data was loaded, store it in the session state
+    if df_redes_sociais is not None:
+        st.session_state.df_redes_sociais = df_redes_sociais
+        st.session_state.rs_status = True
+    
+    if df_redes_sociais_canais is not None:
+        st.session_state.df_redes_sociais_canais = df_redes_sociais_canais
+        st.session_state.rs_canais_status = True
+    
+    if df_globoplay is not None:
+        st.session_state.df_globoplay = df_globoplay
+        st.session_state.globoplay_status = True
+    
+    if df_tv_linear is not None:
+        st.session_state.df_tv_linear = df_tv_linear
+        st.session_state.tv_linear_status = True
+    
+    # Reset merged data if any new file was uploaded
+    if (df_redes_sociais is not None or 
+        df_redes_sociais_canais is not None or 
+        df_globoplay is not None or 
+        df_tv_linear is not None):
+        st.session_state.df_merged = None
+    
     return df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear
-
 
 @st.cache_data
 def merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear):
