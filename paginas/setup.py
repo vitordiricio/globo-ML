@@ -231,6 +231,7 @@ def setup_page():
                     df_merged = join_eventos_externos(df_merged)
                 
                 df_merged = df_merged.fillna(0)
+                df_merged = df_merged.infer_objects(copy=False)
                 st.session_state.df_merged = df_merged
                 st.session_state.needs_merge = False
                 

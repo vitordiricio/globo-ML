@@ -60,6 +60,16 @@ def analise_globoplay(df):
         "Semanal": df_weekly,
     }
     
+    st.markdown("""
+    ### Análise do Consumo de Globoplay
+
+    Esta análise explora os padrões de consumo do Globoplay, examinando diferentes tipos de usuários, dispositivos utilizados e tipos de conteúdo consumido. Os dados são agrupados por período de tempo para identificar tendências gerais e correlações com a audiência da TV Linear.
+    """)
+    
+    st.markdown("""
+    **Recomendação:** Para análises mais detalhadas e precisas, recomenda-se utilizar a granularidade **Diária**, pois oferece uma visão mais granular do comportamento dos usuários e permite identificar padrões que podem ser mascarados em agrupamentos semanais.
+    """)
+    
     granularity = st.selectbox(
         "Selecione a granularidade:",
         options=list(granularity_options.keys())
@@ -70,6 +80,16 @@ def analise_globoplay(df):
     
     # 3. Metrics Tables
     st.subheader("Métricas Resumidas")
+    
+    st.markdown("""
+    As tabelas abaixo apresentam métricas-chave do Globoplay organizadas em três grupos principais:
+    
+    1. **Tipos de Usuário**: Assinantes, Logados Free e Anônimos - mostra diferenças de comportamento por tipo de acesso
+    2. **Dispositivos**: Mobile vs Outros Devices - revela preferências de visualização em diferentes plataformas
+    3. **Tipos de Conteúdo**: Simulcasting (ao vivo) vs VOD (sob demanda) - ilustra padrões de consumo por formato
+    
+    Cada métrica inclui valor médio, desvio padrão e, quando aplicável, a média por usuário (que revela intensidade de uso).
+    """)
     
     # Check if we have the required columns for each table
     required_cols_table1 = [
@@ -337,7 +357,13 @@ def analise_globoplay(df):
     
     # Now add correlation with TV Linear (if available)
     if 'LINEAR_GLOBO_cov%' in selected_df.columns:
-        st.markdown("### Correlação com TV Linear")
+        st.markdown("""
+        ### Correlação com TV Linear
+        
+        As métricas abaixo mostram a correlação entre diferentes categorias de uso do Globoplay e a cobertura da TV Linear (cov%). 
+        Valores próximos a 1 indicam forte relação positiva (aumentam juntos), valores próximos a 0 indicam pouca relação, 
+        e valores negativos indicam relação inversa (quando um aumenta, o outro diminui).
+        """)
         
         # Create columns for correlation cards
         corr_cols = st.columns(3)
@@ -389,6 +415,17 @@ def analise_globoplay(df):
     
     # Visualization Section
     st.subheader("Visualizações")
+    
+    st.markdown("""
+    Os gráficos a seguir ilustram a evolução temporal do consumo de Globoplay, segmentado por diferentes 
+    categorias e comparado com a audiência da TV Linear (quando disponível). Estes gráficos permitem 
+    identificar tendências, sazonalidades e relações entre streaming e TV tradicional.
+    
+    Observe padrões como:
+    - Picos de consumo em determinados períodos
+    - Diferenças no comportamento entre segmentos de usuários
+    - Relação entre audiência de streaming e TV Linear
+    """)
     
     # Only include visualizations if we have the necessary data
     
@@ -457,6 +494,13 @@ def analise_globoplay(df):
             )
             
             st.plotly_chart(fig, use_container_width=True)
+            
+            st.markdown("""
+            **Interpretação:** Este gráfico mostra como o consumo varia entre diferentes tipos de usuários ao longo do tempo.
+            Observe que assinantes geralmente têm maior consumo por pessoa, enquanto usuários logados free e anônimos
+            apresentam padrões de consumo mais leves. A linha de cobertura TV Linear permite avaliar se há
+            complementaridade ou canibalização entre streaming e TV tradicional.
+            """)
         
     # Row 2 - Mobile vs Outros Devices
     has_device_data = any(col in selected_df.columns for col in [
@@ -523,6 +567,13 @@ def analise_globoplay(df):
             )
             
             st.plotly_chart(fig, use_container_width=True)
+            
+            st.markdown("""
+            **Interpretação:** Este gráfico ilustra como o consumo se distribui entre dispositivos móveis e outros tipos de tela.
+            Tendências crescentes no consumo mobile podem indicar mudanças importantes no comportamento da audiência,
+            como maior consumo em deslocamento ou preferência por telas menores para determinados conteúdos.
+            Observe também como eventos sazonais podem afetar diferentemente o consumo em cada tipo de dispositivo.
+            """)
     
     # Row 3 - Simulcasting vs VOD
     has_content_data = any(col in selected_df.columns for col in [
@@ -585,6 +636,13 @@ def analise_globoplay(df):
             )
             
             st.plotly_chart(fig, use_container_width=True)
+            
+            st.markdown("""
+            **Interpretação:** Este gráfico compara o consumo de conteúdo ao vivo (simulcasting) versus conteúdo sob demanda (VOD).
+            Observe como eventos especiais ou temporadas de programas populares podem causar picos no consumo ao vivo,
+            enquanto o consumo VOD tende a ser mais estável ao longo do tempo. A relação com a audiência de TV Linear
+            fornece insights sobre a possível complementaridade ou competição entre estas modalidades de consumo.
+            """)
     
     # 4. Notes and Documentation
     st.subheader("Notas e Documentação")
