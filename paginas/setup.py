@@ -10,6 +10,19 @@ def setup_page():
     """
     st.title("Setup - Carregamento de Dados")
     
+    # Add a reset button
+    if st.button("🔄 Resetar todos os dados"):
+        # Clear all data-related session state
+        for key in ['arquivo_redes_sociais', 'df_redes_sociais', 
+                    'arquivo_redes_sociais_canais', 'df_redes_sociais_canais',
+                    'arquivo_globoplay', 'df_globoplay',
+                    'arquivo_tv_linear', 'df_tv_linear',
+                    'df_merged']:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.success("Dados resetados com sucesso!")
+        st.experimental_rerun()  # Rerun the app to refresh the UI
+    
     st.markdown("""
     ## Upload de Dados
     
@@ -53,12 +66,9 @@ def setup_page():
         Isso permite analisar como fatores externos influenciam a audiência e o engajamento.
         """)
 
-    # Load and process the data (moved from the main app)
+    # Load and process the data
     df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear = carregar_e_tratar_dados()
 
-    # Initialize df_merged as None
-    df_merged = None
-    
     # Check which data sources are available
     data_sources = {
         "Redes Sociais GLOBO": df_redes_sociais is not None,
@@ -67,58 +77,32 @@ def setup_page():
         "TV Linear": df_tv_linear is not None
     }
     
-    # Create df_merged if all needed dataframes are available
-    all_loaded = all(data_sources.values())
-    if all_loaded:
-        
+    # If we already have a merged dataframe in session state, we'll use that
+    if 'df_merged' in st.session_state and st.session_state.df_merged is not None:
+        df_merged = st.session_state.df_merged
+        st.success("🎉 Dados previamente processados estão disponíveis para análise!")
+    # Otherwise, create df_merged if all needed dataframes are available
+    elif all(data_sources.values()):
         with st.spinner("Juntando todos os dados em uma única tabela..."):
             df_merged = merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear)
         
         # Apply external data processing only if df_merged was successfully created
         if df_merged is not None:
-            
             # Show a spinner while processing external data
-            max_date = df_merged['data_hora'].max().strftime('%d/%m/%Y')
-            min_date = df_merged['data_hora'].min().strftime('%d/%m/%Y')
-        
-            df_merged = fetch_all_bcb_economic_indicators(df_merged, 'data_hora', min_date, max_date)
-            df_merged = join_futebol_external_data(df_merged)
-            df_merged = join_tweets(df_merged)
-            df_merged = join_eventos_externos(df_merged)
-            # Fill missing values and complete
-            df_merged = df_merged.fillna(0)
-
-
-            max_date_pos = df_merged['data_hora'].max().strftime('%d/%m/%Y')
-            min_date_pos = df_merged['data_hora'].min().strftime('%d/%m/%Y')
-
-            print(f"min date depois {min_date_pos} max date depois {max_date_pos}")
+            with st.spinner("Enriquecendo os dados com informações externas..."):
+                max_date = df_merged['data_hora'].max().strftime('%d/%m/%Y')
+                min_date = df_merged['data_hora'].min().strftime('%d/%m/%Y')
             
-            # Display period information
-            st.subheader("Períodos dos Dados")
-            st.markdown(f"""
-            📅 **Período de dados disponível**: De **{min_date}** até **{max_date}**
-            
-            > **Nota importante**: Este é o período onde todos os dados solicitados se sobrepõem.
-            """)
+                df_merged = fetch_all_bcb_economic_indicators(df_merged, 'data_hora', min_date, max_date)
+                df_merged = join_futebol_external_data(df_merged)
+                df_merged = join_tweets(df_merged)
+                df_merged = join_eventos_externos(df_merged)
+                # Fill missing values and complete
+                df_merged = df_merged.fillna(0)
             
             # Store the processed data in session state
             st.session_state.df_merged = df_merged
             st.success("🎉 Todos os dados foram processados com sucesso e estão disponíveis para análise!")
-            
-            # Show a preview of the data
-            st.subheader("Pré-visualização dos Dados")
-            st.dataframe(df_merged, use_container_width=True, hide_index=True)
-            
-            # Display some statistics
-            st.subheader("Estatísticas dos Dados")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Total de Registros", f"{len(df_merged):,}".replace(",", "."))
-            with col2:
-                st.metric("Total de Variáveis", len(df_merged.columns))
-            with col3:
-                st.metric("Período em Dias", (df_merged['data_hora'].max() - df_merged['data_hora'].min()).days + 1)
         else:
             st.error("""
             ⚠️ **Erro ao mesclar os dados**
@@ -139,3 +123,31 @@ def setup_page():
         
         O dashboard precisa de todos os arquivos para criar uma visão completa dos dados.
         """)
+    
+    # If we have merged data (either from session state or newly created)
+    if 'df_merged' in st.session_state and st.session_state.df_merged is not None:
+        df_merged = st.session_state.df_merged
+        
+        # Display period information
+        st.subheader("Períodos dos Dados")
+        min_date = df_merged['data_hora'].min().strftime('%d/%m/%Y')
+        max_date = df_merged['data_hora'].max().strftime('%d/%m/%Y')
+        st.markdown(f"""
+        📅 **Período de dados disponível**: De **{min_date}** até **{max_date}**
+        
+        > **Nota importante**: Este é o período onde todos os dados solicitados se sobrepõem.
+        """)
+        
+        # Show a preview of the data
+        st.subheader("Pré-visualização dos Dados")
+        st.dataframe(df_merged, use_container_width=True, hide_index=True)
+        
+        # Display some statistics
+        st.subheader("Estatísticas dos Dados")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total de Registros", f"{len(df_merged):,}".replace(",", "."))
+        with col2:
+            st.metric("Total de Variáveis", len(df_merged.columns))
+        with col3:
+            st.metric("Período em Dias", (df_merged['data_hora'].max() - df_merged['data_hora'].min()).days + 1)
