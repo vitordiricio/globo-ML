@@ -229,14 +229,14 @@ def carregar_e_tratar_dados():
     """
     Função principal que carrega e trata todos os dados.
     Returns:
-        tuple: DataFrames tratados (redes_sociais, globoplay, tv_linear)
+        tuple: DataFrames tratados (redes_sociais, redes_sociais_canais, globoplay, tv_linear)
     """
     st.subheader("Upload dos dados")
     
-    # Criar três colunas
+    # Criar quatro colunas
     col1, col2, col3, col4 = st.columns(4)
     
-    # Primeira coluna - Redes Sociais
+    # Primeira coluna - Redes Sociais GLOBO
     with col1:
         st.text("CSV de redes sociais GLOBO:")
         arquivo_redes_sociais = st.file_uploader("", type=['csv'], key='upload1')
@@ -249,6 +249,7 @@ def carregar_e_tratar_dados():
             except Exception as e:
                 st.error(f"Erro ao processar arquivo: {str(e)}")
 
+    # Segunda coluna - Redes Sociais CANAIS
     with col2:
         st.text("CSV de redes sociais CANAIS:")
         arquivo_redes_sociais_canais = st.file_uploader("", type=['csv'], key='upload2')
@@ -256,7 +257,7 @@ def carregar_e_tratar_dados():
         if arquivo_redes_sociais_canais is not None:
             try:
                 # Added low_memory=False to fix the DtypeWarning
-                df_redes_sociais_canais = pd.read_csv('redes_sociais_canais.csv', 
+                df_redes_sociais_canais = pd.read_csv(arquivo_redes_sociais_canais, 
                           encoding='latin-1',
                           sep=';',
                           quotechar='"',
@@ -266,12 +267,11 @@ def carregar_e_tratar_dados():
                           on_bad_lines='skip',
                           low_memory=False)
                 df_redes_sociais_canais = tratar_redes_sociais_canais(df_redes_sociais_canais)
-                st.success("Arquivo de redes sociais processado!")
+                st.success("Arquivo de redes sociais CANAIS processado!")
             except Exception as e:
                 st.error(f"Erro ao processar arquivo: {str(e)}")
-
     
-    # Segunda coluna - GloboPlay
+    # Terceira coluna - GloboPlay
     with col3:
         st.text("CSV de GloboPlay:")
         arquivo_globoplay = st.file_uploader("", type=['csv'], key='upload3')
@@ -284,7 +284,7 @@ def carregar_e_tratar_dados():
             except Exception as e:
                 st.error(f"Erro ao processar arquivo: {str(e)}")
     
-    # Terceira coluna - TV Linear
+    # Quarta coluna - TV Linear
     with col4:
         st.text("CSV de TV Linear:")
         arquivo_tv_linear = st.file_uploader("", type=['csv'], key='upload4')
@@ -298,7 +298,6 @@ def carregar_e_tratar_dados():
                 st.error(f"Erro ao processar arquivo: {str(e)}")
     
     return df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear
-
 
 @st.cache_data
 def merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear):
