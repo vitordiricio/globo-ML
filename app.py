@@ -10,6 +10,7 @@ from paginas.analise_globoplay import analise_globoplay
 from paginas.analise_redes_sociais import analise_redes_sociais
 from paginas.playground import playground
 from paginas.setup import setup_page
+from paginas.analise_linear_vs_concorrentes import analise_linear_vs_concorrentes
 
 def main():
     configurar_pagina()
@@ -31,8 +32,9 @@ def main():
         unsafe_allow_html=True
     )
     
+    # 1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣
     # Menu de navegação na sidebar - Adicionar "Setup" como primeira opção
-    menu_options = ["⚙️ SETUP", "1️⃣ TV LINEAR", "2️⃣ GLOBOPLAY", "3️⃣ REDES SOCIAIS", "4️⃣ CRENÇAS", "Playground" ]
+    menu_options = ["⚙️ SETUP", "1️⃣ TV LINEAR", "2️⃣ TV LINEAR VS CONCORRENTES","3️⃣ GLOBOPLAY", "4️⃣ REDES SOCIAIS", "5️⃣ REDES SOCIAIS", "Playground" ]
     page = st.sidebar.radio("Selecione a página", menu_options)
     
     # Página de Setup
@@ -76,23 +78,31 @@ def main():
                 analise_tv_linear(df_merged)
             else:
                 st.warning("Por favor, faça o upload dos dados na página 'Setup' primeiro.")
+
+        elif page == "2️⃣ TV LINEAR VS CONCORRENTES":
+            st.title("2️⃣ TV LINEAR VS CONCORRENTES")
+            if df_merged is not None:
+                analise_linear_vs_concorrentes(df_merged)
+            else:
+                st.warning("Por favor, faça o upload dos dados na página 'Setup' primeiro.")
+
         # Página de Análise de Redes Sociais
-        elif page == "2️⃣ GLOBOPLAY":
-            st.title("2️⃣ GLOBOPLAY")
+        elif page == "3️⃣ GLOBOPLAY":
+            st.title("3️⃣ GLOBOPLAY")
             if df_merged is not None:
                 analise_globoplay(df_merged)
             else:
                 st.warning("Por favor, faça o upload dos dados na página 'Setup' primeiro.")
         # Página de Análise de Redes Sociais
-        elif page == "3️⃣ REDES SOCIAIS":
-            st.title("3️⃣ REDES SOCIAIS")
+        elif page == "4️⃣ REDES SOCIAIS":
+            st.title("4️⃣ REDES SOCIAIS")
             if df_merged is not None:
                 analise_redes_sociais(df_merged)
             else:
                 st.warning("Por favor, faça o upload dos dados na página 'Setup' primeiro.")
         # Página Streaming vs TV Linear
-        elif page == "4️⃣ CRENÇAS":
-            st.title("4️⃣ CRENÇAS")
+        elif page == "5️⃣ REDES SOCIAIS":
+            st.title("5️⃣ REDES SOCIAIS")
             if df_merged is not None:
                 analise_streaming_vs_linear(df_merged)
                 analise_social_impacto(df_merged)
