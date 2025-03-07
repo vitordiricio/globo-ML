@@ -1366,7 +1366,8 @@ def analise_fatores_externos(df):
         
         # Agrupar dados por dia para análise econômica
         df['data_apenas'] = pd.to_datetime(df['data_hora']).dt.date
-        df_diario = df.groupby('data_apenas').mean().reset_index()
+        numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+        df_diario = df.groupby('data_apenas')[numeric_cols].mean().reset_index()
         
         # Correlação entre variáveis econômicas e audiência/streaming
         correlation_vars = eco_available + ['LINEAR_GLOBO_rat%', 'LINEAR_GLOBO_shr%']

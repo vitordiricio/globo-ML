@@ -31,7 +31,8 @@ def analise_tv_linear(df):
     # Create daily aggregation
     df_daily = df.copy()
     df_daily['data'] = df_daily['data_hora'].dt.date
-    df_daily = df_daily.groupby('data').mean().reset_index()
+    numeric_cols = df_daily.select_dtypes(include=['number']).columns.tolist()
+    df_daily = df_daily.groupby('data')[numeric_cols].mean().reset_index()
     df_daily['data_hora'] = pd.to_datetime(df_daily['data'])
     
     # Create weekly aggregation

@@ -31,25 +31,32 @@ def analise_globoplay(df):
         df['data_hora'] = pd.to_datetime(df['data_hora'])
     
     # Create copies of the dataframe for each granularity
-    df_hourly = df.copy()
     
     # Create daily aggregation
     df_daily = df.copy()
     df_daily['data'] = df_daily['data_hora'].dt.date
-    df_daily = df_daily.groupby('data').mean().reset_index()
+    
+    # Filter numeric columns for aggregation (to avoid categorical type error)
+    numeric_cols = df_daily.select_dtypes(include=['number']).columns.tolist()
+    if 'data' in numeric_cols:
+        numeric_cols.remove('data')
+    
+    # Group by date for numeric columns only
+    df_daily = df_daily.groupby('data')[numeric_cols].mean().reset_index()
     df_daily['data_hora'] = pd.to_datetime(df_daily['data'])
     
     # Create weekly aggregation
     df_weekly = df.copy()
     df_weekly['semana'] = df_weekly['data_hora'].dt.to_period('W').astype(str)
-    df_weekly = df_weekly.groupby('semana').mean().reset_index()
+    
+    # Group by week for numeric columns only
+    df_weekly = df_weekly.groupby('semana')[numeric_cols].mean().reset_index()
     df_weekly['data_hora'] = pd.to_datetime(df_weekly['semana'].str.split('/').str[0])
     
     # 2. Granularity Selection Dropdown
     granularity_options = {
-        "Semanal": df_weekly,
         "Diário": df_daily,
-        "Horário": df_hourly
+        "Semanal": df_weekly,
     }
     
     granularity = st.selectbox(
@@ -84,230 +91,346 @@ def analise_globoplay(df):
     def create_metrics_table(data_df, metrics_dict):
         metrics_data = []
         for label, col_name in metrics_dict.items():
-            metrics_data.append({
-                "Métrica": label,
-                "Valor Médio": f"{data_df[col_name].mean():.2f}",
-                "Desvio Padrão": f"{data_df[col_name].std():.2f}",
-                "Número de Linhas": f"{len(data_df)}"
-            })
+            if col_name in data_df.columns:
+                metrics_data.append({
+                    "Métrica": label,
+                    "Valor Médio": f"{data_df[col_name].mean():.2f}",
+                    "Desvio Padrão": f"{data_df[col_name].std():.2f}",
+                    "Número de Linhas": f"{len(data_df)}"
+                })
+            else:
+                metrics_data.append({
+                    "Métrica": label,
+                    "Valor Médio": "N/A",
+                    "Desvio Padrão": "N/A",
+                    "Número de Linhas": "N/A"
+                })
         
         return pd.DataFrame(metrics_data)
     
-    # Table 1: Assinantes vs Logados Free vs Anônimos
-    st.markdown("### Assinantes vs Logados Free vs Anônimos")
+    # ROW 1: Assinantes vs Logados Free vs Anônimos
+    row1_col1, row1_col2 = st.columns(2)
     
-    if all(col in selected_df.columns for col in required_cols_table1):
-        table1_metrics = {
-            "Horas Consumidas Assinantes": "GP_horas_consumidas_assinantes",
+    # Left column: Reach metrics (users)
+    with row1_col1:
+        st.markdown("### Usuários: Assinantes vs Logados Free vs Anônimos")
+        
+        reach_metrics = {
             "Usuários Assinantes": "GP_usuários_assinantes_",
-            "Horas Consumidas Logados Free": "GP_horas_consumidas_de_logados_free",
             "Usuários Logados Free": "GP_usuários_de_vídeo_logados_free",
-            "Horas Consumidas Anônimos": "GP_horas_consumidas_de_anonimos",
             "Usuários Anônimos": "GP_usuários_anonimos"
         }
         
-        table1_df = create_metrics_table(selected_df, table1_metrics)
-        st.dataframe(table1_df, hide_index=True)
+        reach_df = create_metrics_table(selected_df, reach_metrics)
+        st.dataframe(reach_df, hide_index=True)
+    
+    # Right column: Engagement metrics (hours) + avg per user
+    with row1_col2:
+        st.markdown("### Horas: Assinantes vs Logados Free vs Anônimos")
         
-        # Create correlation chart with TV Linear cov%
-        if 'LINEAR_GLOBO_cov%' in selected_df.columns:
-            st.markdown("#### Correlação com TV Linear")
+        engagement_metrics = {
+            "Horas Consumidas Assinantes": "GP_horas_consumidas_assinantes",
+            "Horas Consumidas Logados Free": "GP_horas_consumidas_de_logados_free",
+            "Horas Consumidas Anônimos": "GP_horas_consumidas_de_anonimos"
+        }
+        
+        # Create basic metrics table
+        engagement_df = create_metrics_table(selected_df, engagement_metrics)
+        
+        # Calculate average hours per user
+        avg_hours_data = []
+        
+        # Check if columns exist before calculating
+        has_assinantes = ("GP_horas_consumidas_assinantes" in selected_df.columns and 
+                          "GP_usuários_assinantes_" in selected_df.columns)
+        has_logados = ("GP_horas_consumidas_de_logados_free" in selected_df.columns and 
+                       "GP_usuários_de_vídeo_logados_free" in selected_df.columns)
+        has_anonimos = ("GP_horas_consumidas_de_anonimos" in selected_df.columns and 
+                        "GP_usuários_anonimos" in selected_df.columns)
+        
+        # Assinantes
+        if has_assinantes:
+            assinantes_hours = selected_df["GP_horas_consumidas_assinantes"].mean()
+            assinantes_users = selected_df["GP_usuários_assinantes_"].mean()
+            avg_assinantes = assinantes_hours / assinantes_users if assinantes_users > 0 else 0
+            avg_hours_data.append({
+                "Métrica": "Horas Médias por Assinante",
+                "Valor Médio": f"{avg_assinantes:.2f}",
+                "Desvio Padrão": "N/A",
+                "Número de Linhas": f"{len(selected_df)}"
+            })
+        
+        # Logados Free
+        if has_logados:
+            logados_hours = selected_df["GP_horas_consumidas_de_logados_free"].mean()
+            logados_users = selected_df["GP_usuários_de_vídeo_logados_free"].mean()
+            avg_logados = logados_hours / logados_users if logados_users > 0 else 0
+            avg_hours_data.append({
+                "Métrica": "Horas Médias por Logado Free",
+                "Valor Médio": f"{avg_logados:.2f}",
+                "Desvio Padrão": "N/A",
+                "Número de Linhas": f"{len(selected_df)}"
+            })
+        
+        # Anônimos
+        if has_anonimos:
+            anonimos_hours = selected_df["GP_horas_consumidas_de_anonimos"].mean()
+            anonimos_users = selected_df["GP_usuários_anonimos"].mean()
+            avg_anonimos = anonimos_hours / anonimos_users if anonimos_users > 0 else 0
+            avg_hours_data.append({
+                "Métrica": "Horas Médias por Anônimo",
+                "Valor Médio": f"{avg_anonimos:.2f}",
+                "Desvio Padrão": "N/A",
+                "Número de Linhas": f"{len(selected_df)}"
+            })
+        
+        # Add to table if we have data
+        if avg_hours_data:
+            avg_hours_df = pd.DataFrame(avg_hours_data)
             
-            # Prepare data for the chart
-            plot_data = pd.DataFrame({'Data': selected_df['data_hora']})
-            plot_data['Horas Consumidas Assinantes'] = selected_df['GP_horas_consumidas_assinantes']
-            plot_data['Horas Consumidas Logados Free'] = selected_df['GP_horas_consumidas_de_logados_free']
-            plot_data['Horas Consumidas Anônimos'] = selected_df['GP_horas_consumidas_de_anonimos']
-            plot_data['cov% TV Linear'] = selected_df['LINEAR_GLOBO_cov%']
-            
-            # Create line chart
-            fig = px.line(
-                plot_data, 
-                x='Data', 
-                y=['Horas Consumidas Assinantes', 'Horas Consumidas Logados Free', 
-                   'Horas Consumidas Anônimos', 'cov% TV Linear'],
-                title=f"Engajamento por Tipo de Usuário vs cov% TV Linear - {granularity}",
-                labels={'value': 'Valor', 'variable': 'Métrica'}
-            )
-            
-            # Update layout
-            fig.update_layout(
-                plot_bgcolor='#F5F5F5',
-                font=dict(family="Roboto, Arial", color="#212121"),
-                legend=dict(orientation="h", y=1.1),
-                margin=dict(t=50, l=50, r=20, b=50),
-                hovermode="x unified"
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Calculate correlations
-            corr_assinantes = selected_df['GP_horas_consumidas_assinantes'].corr(selected_df['LINEAR_GLOBO_cov%'])
-            corr_logados = selected_df['GP_horas_consumidas_de_logados_free'].corr(selected_df['LINEAR_GLOBO_cov%'])
-            corr_anonimos = selected_df['GP_horas_consumidas_de_anonimos'].corr(selected_df['LINEAR_GLOBO_cov%'])
-            
-            st.markdown("**Correlações com cov% TV Linear:**")
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric(
-                    "Assinantes",
-                    f"{corr_assinantes:.2f}",
-                    delta=None,
-                    delta_color="normal"
-                )
-                
-            with col2:
-                st.metric(
-                    "Logados Free",
-                    f"{corr_logados:.2f}",
-                    delta=None,
-                    delta_color="normal"
-                )
-                
-            with col3:
-                st.metric(
-                    "Anônimos",
-                    f"{corr_anonimos:.2f}",
-                    delta=None,
-                    delta_color="normal"
-                )
-            
-            # Interpretation of correlations
-            st.markdown("**Interpretação das correlações:**")
-            
-            for label, corr in [("Assinantes", corr_assinantes), 
-                              ("Logados Free", corr_logados), 
-                              ("Anônimos", corr_anonimos)]:
-                if abs(corr) > 0.7:
-                    st.success(f"**{label}**: Correlação forte ({corr:.2f}) com cov% TV Linear")
-                elif abs(corr) > 0.3:
-                    st.info(f"**{label}**: Correlação moderada ({corr:.2f}) com cov% TV Linear")
-                else:
-                    st.warning(f"**{label}**: Correlação fraca ({corr:.2f}) com cov% TV Linear")
-    else:
-        st.warning("Dados insuficientes para exibir métricas de Assinantes vs Logados Free vs Anônimos.")
+            # Combine tables
+            combined_df = pd.concat([engagement_df, avg_hours_df])
+            st.dataframe(combined_df, hide_index=True)
+        else:
+            st.dataframe(engagement_df, hide_index=True)
     
-    # Table 2: Mobile vs Outros Devices
-    st.markdown("### Mobile vs Outros Devices")
+    # ROW 2: Mobile vs Outros Devices
+    row2_col1, row2_col2 = st.columns(2)
     
-    if all(col in selected_df.columns for col in required_cols_table2):
-        table2_metrics = {
-            "Horas Consumidas Mobile": "GP_horas_consumidas_mobile",
+    # Left column: Reach metrics (users)
+    with row2_col1:
+        st.markdown("### Usuários: Mobile vs Outros Devices")
+        
+        reach_metrics = {
             "Usuários Mobile": "GP_usuários_em_mobile",
-            "Horas Consumidas Outros Devices": "GP_horas_consumidas_em_demais_devices",
             "Usuários Outros Devices": "GP_usuários_em_demais_devices"
         }
         
-        table2_df = create_metrics_table(selected_df, table2_metrics)
-        st.dataframe(table2_df, hide_index=True)
+        reach_df = create_metrics_table(selected_df, reach_metrics)
+        st.dataframe(reach_df, hide_index=True)
+    
+    # Right column: Engagement metrics (hours) + avg per user
+    with row2_col2:
+        st.markdown("### Horas: Mobile vs Outros Devices")
         
-        # Create correlation chart with TV Linear cov%
-        if 'LINEAR_GLOBO_cov%' in selected_df.columns:
-            st.markdown("#### Correlação com TV Linear")
+        engagement_metrics = {
+            "Horas Consumidas Mobile": "GP_horas_consumidas_mobile",
+            "Horas Consumidas Outros Devices": "GP_horas_consumidas_em_demais_devices"
+        }
+        
+        # Create basic metrics table
+        engagement_df = create_metrics_table(selected_df, engagement_metrics)
+        
+        # Calculate average hours per user
+        avg_hours_data = []
+        
+        # Check if columns exist before calculating
+        has_mobile = ("GP_horas_consumidas_mobile" in selected_df.columns and 
+                      "GP_usuários_em_mobile" in selected_df.columns)
+        has_outros = ("GP_horas_consumidas_em_demais_devices" in selected_df.columns and 
+                      "GP_usuários_em_demais_devices" in selected_df.columns)
+        
+        # Mobile
+        if has_mobile:
+            mobile_hours = selected_df["GP_horas_consumidas_mobile"].mean()
+            mobile_users = selected_df["GP_usuários_em_mobile"].mean()
+            avg_mobile = mobile_hours / mobile_users if mobile_users > 0 else 0
+            avg_hours_data.append({
+                "Métrica": "Horas Médias por Usuário Mobile",
+                "Valor Médio": f"{avg_mobile:.2f}",
+                "Desvio Padrão": "N/A",
+                "Número de Linhas": f"{len(selected_df)}"
+            })
+        
+        # Outros Devices
+        if has_outros:
+            outros_hours = selected_df["GP_horas_consumidas_em_demais_devices"].mean()
+            outros_users = selected_df["GP_usuários_em_demais_devices"].mean()
+            avg_outros = outros_hours / outros_users if outros_users > 0 else 0
+            avg_hours_data.append({
+                "Métrica": "Horas Médias por Usuário Outros Devices",
+                "Valor Médio": f"{avg_outros:.2f}",
+                "Desvio Padrão": "N/A",
+                "Número de Linhas": f"{len(selected_df)}"
+            })
+        
+        # Add to table if we have data
+        if avg_hours_data:
+            avg_hours_df = pd.DataFrame(avg_hours_data)
             
-            # Prepare data for the chart
-            plot_data = pd.DataFrame({'Data': selected_df['data_hora']})
-            plot_data['Horas Consumidas Mobile'] = selected_df['GP_horas_consumidas_mobile']
-            plot_data['Horas Consumidas Outros Devices'] = selected_df['GP_horas_consumidas_em_demais_devices']
-            plot_data['cov% TV Linear'] = selected_df['LINEAR_GLOBO_cov%']
-            
-            # Create line chart
-            fig = px.line(
-                plot_data, 
-                x='Data', 
-                y=['Horas Consumidas Mobile', 'Horas Consumidas Outros Devices', 'cov% TV Linear'],
-                title=f"Engajamento por Tipo de Device vs cov% TV Linear - {granularity}",
-                labels={'value': 'Valor', 'variable': 'Métrica'}
-            )
-            
-            # Update layout
-            fig.update_layout(
-                plot_bgcolor='#F5F5F5',
-                font=dict(family="Roboto, Arial", color="#212121"),
-                legend=dict(orientation="h", y=1.1),
-                margin=dict(t=50, l=50, r=20, b=50),
-                hovermode="x unified"
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Calculate correlations
-            corr_mobile = selected_df['GP_horas_consumidas_mobile'].corr(selected_df['LINEAR_GLOBO_cov%'])
-            corr_outros = selected_df['GP_horas_consumidas_em_demais_devices'].corr(selected_df['LINEAR_GLOBO_cov%'])
-            
-            st.markdown("**Correlações com cov% TV Linear:**")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.metric(
-                    "Mobile",
-                    f"{corr_mobile:.2f}",
-                    delta=None,
-                    delta_color="normal"
-                )
-                
-            with col2:
-                st.metric(
-                    "Outros Devices",
-                    f"{corr_outros:.2f}",
-                    delta=None,
-                    delta_color="normal"
-                )
-            
-            # Interpretation of correlations
-            st.markdown("**Interpretação das correlações:**")
-            
-            for label, corr in [("Mobile", corr_mobile), ("Outros Devices", corr_outros)]:
-                if abs(corr) > 0.7:
-                    st.success(f"**{label}**: Correlação forte ({corr:.2f}) com cov% TV Linear")
-                elif abs(corr) > 0.3:
-                    st.info(f"**{label}**: Correlação moderada ({corr:.2f}) com cov% TV Linear")
-                else:
-                    st.warning(f"**{label}**: Correlação fraca ({corr:.2f}) com cov% TV Linear")
-    else:
-        st.warning("Dados insuficientes para exibir métricas de Mobile vs Outros Devices.")
+            # Combine tables
+            combined_df = pd.concat([engagement_df, avg_hours_df])
+            st.dataframe(combined_df, hide_index=True)
+        else:
+            st.dataframe(engagement_df, hide_index=True)
     
-    # Table 3: Simulcasting vs VOD
-    st.markdown("### Simulcasting (TVG ao Vivo) vs VOD")
+    # ROW 3: Simulcasting vs VOD
+    row3_col1, row3_col2 = st.columns(2)
     
-    if all(col in selected_df.columns for col in required_cols_table3):
-        table3_metrics = {
-            "Horas Consumidas TVG ao Vivo": "GP_horas_consumidas_em_tvg_ao_vivo",
+    # Left column: Reach metrics (users)
+    with row3_col1:
+        st.markdown("### Usuários: Simulcasting (TVG ao Vivo) vs VOD")
+        
+        reach_metrics = {
             "Usuários TVG ao Vivo": "GP_usuários_em_tvg_ao_vivo",
-            "Qtd Íntegras Publicadas": "GP_qtd_de_integras_publicadas",
+            "Qtd Íntegras Publicadas": "GP_qtd_de_integras_publicadas"
+        }
+        
+        reach_df = create_metrics_table(selected_df, reach_metrics)
+        st.dataframe(reach_df, hide_index=True)
+    
+    # Right column: Engagement metrics (hours) + avg per user
+    with row3_col2:
+        st.markdown("### Horas: Simulcasting (TVG ao Vivo) vs VOD")
+        
+        engagement_metrics = {
+            "Horas Consumidas TVG ao Vivo": "GP_horas_consumidas_em_tvg_ao_vivo",
             "Horas Disponíveis Íntegras": "GP_qtd_de_horas_disponíveis_integras"
         }
         
-        table3_df = create_metrics_table(selected_df, table3_metrics)
-        st.dataframe(table3_df, hide_index=True)
+        # Create basic metrics table
+        engagement_df = create_metrics_table(selected_df, engagement_metrics)
         
-        # Create correlation chart with TV Linear cov%
+        # Calculate average hours per user/item
+        avg_hours_data = []
+        
+        # Check if columns exist before calculating
+        has_tvg = ("GP_horas_consumidas_em_tvg_ao_vivo" in selected_df.columns and 
+                   "GP_usuários_em_tvg_ao_vivo" in selected_df.columns)
+        has_vod = ("GP_qtd_de_horas_disponíveis_integras" in selected_df.columns and 
+                   "GP_qtd_de_integras_publicadas" in selected_df.columns)
+        
+        # TVG ao Vivo
+        if has_tvg:
+            tvg_hours = selected_df["GP_horas_consumidas_em_tvg_ao_vivo"].mean()
+            tvg_users = selected_df["GP_usuários_em_tvg_ao_vivo"].mean()
+            avg_tvg = tvg_hours / tvg_users if tvg_users > 0 else 0
+            avg_hours_data.append({
+                "Métrica": "Horas Médias por Usuário TVG ao Vivo",
+                "Valor Médio": f"{avg_tvg:.2f}",
+                "Desvio Padrão": "N/A",
+                "Número de Linhas": f"{len(selected_df)}"
+            })
+        
+        # Íntegras (VOD) - horas por íntegra publicada
+        if has_vod:
+            vod_hours = selected_df["GP_qtd_de_horas_disponíveis_integras"].mean()
+            vod_items = selected_df["GP_qtd_de_integras_publicadas"].mean()
+            avg_vod = vod_hours / vod_items if vod_items > 0 else 0
+            avg_hours_data.append({
+                "Métrica": "Horas Médias por Íntegra Publicada",
+                "Valor Médio": f"{avg_vod:.2f}",
+                "Desvio Padrão": "N/A",
+                "Número de Linhas": f"{len(selected_df)}"
+            })
+        
+        # Add to table if we have data
+        if avg_hours_data:
+            avg_hours_df = pd.DataFrame(avg_hours_data)
+            
+            # Combine tables
+            combined_df = pd.concat([engagement_df, avg_hours_df])
+            st.dataframe(combined_df, hide_index=True)
+        else:
+            st.dataframe(engagement_df, hide_index=True)
+    
+    # Now add correlation with TV Linear (if available)
+    if 'LINEAR_GLOBO_cov%' in selected_df.columns:
+        st.markdown("### Correlação com TV Linear")
+        
+        # Create columns for correlation cards
+        corr_cols = st.columns(3)
+        
+        # Row 1 - Assinantes vs Logados vs Anônimos
+        with corr_cols[0]:
+            st.subheader("Tipo de Usuário")
+            
+            # Calculate correlations
+            corr_metrics = []
+            
+            if "GP_horas_consumidas_assinantes" in selected_df.columns:
+                corr_assinantes = selected_df['GP_horas_consumidas_assinantes'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Assinantes", f"{corr_assinantes:.2f}")
+            
+            if "GP_horas_consumidas_de_logados_free" in selected_df.columns:
+                corr_logados = selected_df['GP_horas_consumidas_de_logados_free'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Logados Free", f"{corr_logados:.2f}")
+            
+            if "GP_horas_consumidas_de_anonimos" in selected_df.columns:
+                corr_anonimos = selected_df['GP_horas_consumidas_de_anonimos'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Anônimos", f"{corr_anonimos:.2f}")
+        
+        # Row 2 - Mobile vs Outros Devices
+        with corr_cols[1]:
+            st.subheader("Tipo de Device")
+            
+            # Calculate correlations
+            if "GP_horas_consumidas_mobile" in selected_df.columns:
+                corr_mobile = selected_df['GP_horas_consumidas_mobile'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Mobile", f"{corr_mobile:.2f}")
+            
+            if "GP_horas_consumidas_em_demais_devices" in selected_df.columns:
+                corr_outros = selected_df['GP_horas_consumidas_em_demais_devices'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Outros Devices", f"{corr_outros:.2f}")
+        
+        # Row 3 - Simulcasting vs VOD
+        with corr_cols[2]:
+            st.subheader("Tipo de Conteúdo")
+            
+            # Calculate correlations
+            if "GP_horas_consumidas_em_tvg_ao_vivo" in selected_df.columns:
+                corr_tvg = selected_df['GP_horas_consumidas_em_tvg_ao_vivo'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("TVG ao Vivo", f"{corr_tvg:.2f}")
+            
+            if "GP_qtd_de_horas_disponíveis_integras" in selected_df.columns:
+                corr_vod = selected_df['GP_qtd_de_horas_disponíveis_integras'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("VOD (Íntegras)", f"{corr_vod:.2f}")
+    
+    # Visualization Section
+    st.subheader("Visualizações")
+    
+    # Only include visualizations if we have the necessary data
+    
+    # Row 1 - Assinantes vs Logados vs Anônimos
+    has_user_data = any(col in selected_df.columns for col in [
+        'GP_horas_consumidas_assinantes', 
+        'GP_horas_consumidas_de_logados_free', 
+        'GP_horas_consumidas_de_anonimos'
+    ])
+    
+    if has_user_data:
+        st.markdown("#### Engajamento por Tipo de Usuário vs. TV Linear")
+        
+        # Prepare data for the chart
+        plot_data = pd.DataFrame({'Data': selected_df['data_hora']})
+        
+        if 'GP_horas_consumidas_assinantes' in selected_df.columns:
+            plot_data['Horas Consumidas Assinantes'] = selected_df['GP_horas_consumidas_assinantes']
+        
+        if 'GP_horas_consumidas_de_logados_free' in selected_df.columns:
+            plot_data['Horas Consumidas Logados Free'] = selected_df['GP_horas_consumidas_de_logados_free']
+        
+        if 'GP_horas_consumidas_de_anonimos' in selected_df.columns:
+            plot_data['Horas Consumidas Anônimos'] = selected_df['GP_horas_consumidas_de_anonimos']
+        
         if 'LINEAR_GLOBO_cov%' in selected_df.columns:
-            st.markdown("#### Correlação com TV Linear")
-            
-            # Prepare data for the chart
-            plot_data = pd.DataFrame({'Data': selected_df['data_hora']})
-            plot_data['Horas Consumidas TVG ao Vivo'] = selected_df['GP_horas_consumidas_em_tvg_ao_vivo']
-            
-            # Calculate VOD hours consumed (not directly available, approximating with íntegras)
-            plot_data['Horas Disponíveis VOD'] = selected_df['GP_qtd_de_horas_disponíveis_integras']
             plot_data['cov% TV Linear'] = selected_df['LINEAR_GLOBO_cov%']
-            
+        
+        # Get y-columns (exclude 'Data')
+        y_cols = [col for col in plot_data.columns if col != 'Data']
+        
+        if y_cols:  # Only create chart if we have y data
             # Create line chart
             fig = px.line(
                 plot_data, 
                 x='Data', 
-                y=['Horas Consumidas TVG ao Vivo', 'Horas Disponíveis VOD', 'cov% TV Linear'],
-                title=f"Simulcasting vs VOD vs cov% TV Linear - {granularity}",
+                y=y_cols,
+                title=f"Engajamento por Tipo de Usuário - {granularity}",
                 labels={'value': 'Valor', 'variable': 'Métrica'}
             )
             
             # Update layout
             fig.update_layout(
-                plot_bgcolor='#F5F5F5',
                 font=dict(family="Roboto, Arial", color="#212121"),
                 legend=dict(orientation="h", y=1.1),
                 margin=dict(t=50, l=50, r=20, b=50),
@@ -315,43 +438,94 @@ def analise_globoplay(df):
             )
             
             st.plotly_chart(fig, use_container_width=True)
+    
+    # Row 2 - Mobile vs Outros Devices
+    has_device_data = any(col in selected_df.columns for col in [
+        'GP_horas_consumidas_mobile', 
+        'GP_horas_consumidas_em_demais_devices'
+    ])
+    
+    if has_device_data:
+        st.markdown("#### Engajamento por Tipo de Device vs. TV Linear")
+        
+        # Prepare data for the chart
+        plot_data = pd.DataFrame({'Data': selected_df['data_hora']})
+        
+        if 'GP_horas_consumidas_mobile' in selected_df.columns:
+            plot_data['Horas Consumidas Mobile'] = selected_df['GP_horas_consumidas_mobile']
+        
+        if 'GP_horas_consumidas_em_demais_devices' in selected_df.columns:
+            plot_data['Horas Consumidas Outros Devices'] = selected_df['GP_horas_consumidas_em_demais_devices']
+        
+        if 'LINEAR_GLOBO_cov%' in selected_df.columns:
+            plot_data['cov% TV Linear'] = selected_df['LINEAR_GLOBO_cov%']
+        
+        # Get y-columns (exclude 'Data')
+        y_cols = [col for col in plot_data.columns if col != 'Data']
+        
+        if y_cols:  # Only create chart if we have y data
+            # Create line chart
+            fig = px.line(
+                plot_data, 
+                x='Data', 
+                y=y_cols,
+                title=f"Engajamento por Tipo de Device - {granularity}",
+                labels={'value': 'Valor', 'variable': 'Métrica'}
+            )
             
-            # Calculate correlations
-            corr_tvg = selected_df['GP_horas_consumidas_em_tvg_ao_vivo'].corr(selected_df['LINEAR_GLOBO_cov%'])
-            corr_vod = selected_df['GP_qtd_de_horas_disponíveis_integras'].corr(selected_df['LINEAR_GLOBO_cov%'])
+            # Update layout
+            fig.update_layout(
+                font=dict(family="Roboto, Arial", color="#212121"),
+                legend=dict(orientation="h", y=1.1),
+                margin=dict(t=50, l=50, r=20, b=50),
+                hovermode="x unified"
+            )
             
-            st.markdown("**Correlações com cov% TV Linear:**")
+            st.plotly_chart(fig, use_container_width=True)
+    
+    # Row 3 - Simulcasting vs VOD
+    has_content_data = any(col in selected_df.columns for col in [
+        'GP_horas_consumidas_em_tvg_ao_vivo', 
+        'GP_qtd_de_horas_disponíveis_integras'
+    ])
+    
+    if has_content_data:
+        st.markdown("#### Simulcasting vs VOD vs. TV Linear")
+        
+        # Prepare data for the chart
+        plot_data = pd.DataFrame({'Data': selected_df['data_hora']})
+        
+        if 'GP_horas_consumidas_em_tvg_ao_vivo' in selected_df.columns:
+            plot_data['Horas Consumidas TVG ao Vivo'] = selected_df['GP_horas_consumidas_em_tvg_ao_vivo']
+        
+        if 'GP_qtd_de_horas_disponíveis_integras' in selected_df.columns:
+            plot_data['Horas Disponíveis VOD'] = selected_df['GP_qtd_de_horas_disponíveis_integras']
+        
+        if 'LINEAR_GLOBO_cov%' in selected_df.columns:
+            plot_data['cov% TV Linear'] = selected_df['LINEAR_GLOBO_cov%']
+        
+        # Get y-columns (exclude 'Data')
+        y_cols = [col for col in plot_data.columns if col != 'Data']
+        
+        if y_cols:  # Only create chart if we have y data
+            # Create line chart
+            fig = px.line(
+                plot_data, 
+                x='Data', 
+                y=y_cols,
+                title=f"Simulcasting vs VOD - {granularity}",
+                labels={'value': 'Valor', 'variable': 'Métrica'}
+            )
             
-            col1, col2 = st.columns(2)
+            # Update layout
+            fig.update_layout(
+                font=dict(family="Roboto, Arial", color="#212121"),
+                legend=dict(orientation="h", y=1.1),
+                margin=dict(t=50, l=50, r=20, b=50),
+                hovermode="x unified"
+            )
             
-            with col1:
-                st.metric(
-                    "TVG ao Vivo",
-                    f"{corr_tvg:.2f}",
-                    delta=None,
-                    delta_color="normal"
-                )
-                
-            with col2:
-                st.metric(
-                    "VOD (Íntegras)",
-                    f"{corr_vod:.2f}",
-                    delta=None,
-                    delta_color="normal"
-                )
-            
-            # Interpretation of correlations
-            st.markdown("**Interpretação das correlações:**")
-            
-            for label, corr in [("TVG ao Vivo", corr_tvg), ("VOD (Íntegras)", corr_vod)]:
-                if abs(corr) > 0.7:
-                    st.success(f"**{label}**: Correlação forte ({corr:.2f}) com cov% TV Linear")
-                elif abs(corr) > 0.3:
-                    st.info(f"**{label}**: Correlação moderada ({corr:.2f}) com cov% TV Linear")
-                else:
-                    st.warning(f"**{label}**: Correlação fraca ({corr:.2f}) com cov% TV Linear")
-    else:
-        st.warning("Dados insuficientes para exibir métricas de Simulcasting vs VOD.")
+            st.plotly_chart(fig, use_container_width=True)
     
     # 4. Notes and Documentation
     st.subheader("Notas e Documentação")
@@ -377,5 +551,4 @@ def analise_globoplay(df):
         - **Assinantes**: Usuários com assinatura paga do Globoplay.
         - **Logados Free**: Usuários com cadastro na plataforma, mas sem assinatura paga.
         - **Anônimos**: Usuários que acessam conteúdos gratuitos sem fazer login.
-    
         """)
