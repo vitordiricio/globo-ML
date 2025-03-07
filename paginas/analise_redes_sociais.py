@@ -4,8 +4,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import streamlit as st
 import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime
 
 def analise_redes_sociais(df):
     """

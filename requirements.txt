@@ -4,6 +4,7 @@ attrs==25.1.0
 blinker==1.9.0
 cachetools==5.5.1
 certifi==2025.1.31
+chardet==5.2.0
 charset-normalizer==3.4.1
 click==8.1.8
 cloudpickle==3.1.1
@@ -53,6 +54,7 @@ openpyxl==3.1.5
 packaging==24.2
 pandas==2.2.3
 parso==0.8.4
+patsy==1.0.1
 pexpect==4.9.0
 pillow==11.1.0
 platformdirs==4.3.6
@@ -88,6 +90,7 @@ six==1.17.0
 slicer==0.0.8
 smmap==5.0.2
 stack-data==0.6.3
+statsmodels==0.14.4
 streamlit==1.42.0
 tenacity==9.0.0
 threadpoolctl==3.5.0

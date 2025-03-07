@@ -3,7 +3,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 
-import numpy as np
 from sklearn.metrics import r2_score, mean_squared_error, root_mean_squared_error
 from matplotlib.colors import LinearSegmentedColormap
 

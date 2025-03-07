@@ -1,11 +1,7 @@
 # utils/analise_globoplay.py
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
-from datetime import datetime, timedelta
-from scipy import stats
 from plotly.subplots import make_subplots
 
 def analise_globoplay(df):
