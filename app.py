@@ -11,6 +11,7 @@ from paginas.analise_redes_sociais import analise_redes_sociais
 from paginas.playground import playground
 from paginas.setup import setup_page
 from paginas.analise_linear_vs_concorrentes import analise_linear_vs_concorrentes
+from paginas.analise_externos import analise_externos
 
 def main():
     configurar_pagina()
@@ -34,7 +35,7 @@ def main():
     
     # 1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣
     # Menu de navegação na sidebar - Adicionar "Setup" como primeira opção
-    menu_options = ["⚙️ SETUP", "1️⃣ TV LINEAR", "2️⃣ TV LINEAR VS CONCORRENTES","3️⃣ GLOBOPLAY", "4️⃣ REDES SOCIAIS", "5️⃣ REDES SOCIAIS", "Playground" ]
+    menu_options = ["⚙️ SETUP", "1️⃣ TV LINEAR", "2️⃣ TV LINEAR VS CONCORRENTES","3️⃣ GLOBOPLAY", "4️⃣ REDES SOCIAIS", "5️⃣ CRENÇAS", "6️⃣ EXTERNOS", "🛝 PLAYGROUND" ]
     page = st.sidebar.radio("Selecione a página", menu_options)
     
     # Página de Setup
@@ -68,8 +69,8 @@ def main():
                     # Store in session state
                     st.session_state.df_merged = df_merged
         
-        # Página PLayground
-        if page == "Playground" :
+        # Página 🛝 PLAYGROUND
+        if page == "🛝 PLAYGROUND" :
             playground(df_merged)
         # Página de TV LINEAR
         elif page == "1️⃣ TV LINEAR":
@@ -101,14 +102,22 @@ def main():
             else:
                 st.warning("Por favor, faça o upload dos dados na página 'Setup' primeiro.")
         # Página Streaming vs TV Linear
-        elif page == "5️⃣ REDES SOCIAIS":
-            st.title("5️⃣ REDES SOCIAIS")
+        elif page == "5️⃣ CRENÇAS":
+            st.title("5️⃣ CRENÇAS")
             if df_merged is not None:
                 analise_streaming_vs_linear(df_merged)
                 analise_social_impacto(df_merged)
                 analise_grandes_eventos(df_merged)
                 analise_fatores_externos(df_merged)
                 analise_percepcao_marca(df_merged)
+            else:
+                st.warning("Por favor, faça o upload dos dados na página 'Setup' primeiro.")
+
+        # Página Streaming vs TV Linear
+        elif page == "6️⃣ EXTERNOS":
+            st.title("6️⃣ EXTERNOS")
+            if df_merged is not None:
+                analise_externos(df_merged)
             else:
                 st.warning("Por favor, faça o upload dos dados na página 'Setup' primeiro.")
     
