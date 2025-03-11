@@ -33,46 +33,140 @@ def join_tweets(tabela_mae):
 
 
 @st.cache_data
-def join_futebol_external_data(tabela_mae):
+def join_grade_external_data(tabela_mae, eventos=None):
     """
-    Otimização da função que processa dados externos de futebol
+    Adds columns to tabela_mae based on TV programming data.
+    
+    Args:
+        tabela_mae (DataFrame): Main dataframe to add columns to
+        eventos (dict, optional): Dictionary mapping event types to program names
+                                 e.g. {'FUTEBOL': ['FUTEBOL NOT', 'FUTEBOL MAT'], 'BBB': ['BIG BROTHER BRASIL']}
+    
+    Returns:
+        DataFrame: tabela_mae with added columns
     """
-    dados_externos_futebol = pd.read_csv('futebol_externo.csv', sep=";")
+    # Read the TV programming data
+    globo_grade = pd.read_csv('globo_tv_linear.csv')
+    globo_grade.columns = globo_grade.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '').str.replace('[', '').str.replace(']', '')
+    globo_grade = globo_grade[['nome_programa', 'detalhe', 'quadro', 'gênero', 'emissora', 'data', 'hora_início', 'hora_fim', 'duração_prg']]
+    globo_grade = globo_grade.drop_duplicates()
 
-    # Garantir que data_hora em tabela_mae seja datetime
+    band_grade = pd.read_csv('band_tv_linear.csv')
+    band_grade.columns = band_grade.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '').str.replace('[', '').str.replace(']', '')
+    band_grade = band_grade[['nome_programa', 'detalhe', 'quadro', 'gênero', 'emissora', 'data', 'hora_início', 'hora_fim', 'duração_prg']]
+    band_grade = band_grade.drop_duplicates()
+
+    sbt_grade = pd.read_csv('sbt_tv_linear.csv')
+    sbt_grade.columns = sbt_grade.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '').str.replace('[', '').str.replace(']', '')
+    sbt_grade = sbt_grade[['nome_programa', 'detalhe', 'quadro', 'gênero', 'emissora', 'data', 'hora_início', 'hora_fim', 'duração_prg']]
+    sbt_grade = sbt_grade.drop_duplicates()
+
+    record_grade = pd.read_csv('record_tv_linear.csv')
+    record_grade.columns = record_grade.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '').str.replace('[', '').str.replace(']', '')
+    record_grade = record_grade[['nome_programa', 'detalhe', 'quadro', 'gênero', 'emissora', 'data', 'hora_início', 'hora_fim', 'duração_prg']]
+    record_grade = record_grade.drop_duplicates()
+
+    grade_todas_emissoras = pd.concat([globo_grade, band_grade, sbt_grade, record_grade]).reset_index(drop=True)
+    
     if not pd.api.types.is_datetime64_dtype(tabela_mae['data_hora']):
+        tabela_mae = tabela_mae.copy()  # Create a copy to avoid SettingWithCopyWarning
         tabela_mae['data_hora'] = pd.to_datetime(tabela_mae['data_hora'])
+    else:
+        # Create a copy to avoid modifying the original
+        tabela_mae = tabela_mae.copy()
     
-    # Criar a coluna no tabela_mae inicializada com 0
-    tabela_mae = tabela_mae.copy()  # Criar cópia para evitar SettingWithCopyWarning
-    tabela_mae['EXTERNO_FUTEBOL_CONCORRENTE_ON'] = 0
+    # Normalize hour format to 24h cycle and fix date accordingly
+    def normalize_hour_and_get_days_ahead(hour_str):
+        # Split by colon and take only the first two parts (hours and minutes)
+        parts = hour_str.split(':')
+        hours = int(parts[0])
+        minutes = int(parts[1])  # Ignore seconds if present
+        
+        days_ahead = hours // 24  # Integer division to get days
+        normalized_hours = hours % 24  # Modulo to get hours in 24h format
+        return f"{normalized_hours:02d}:{minutes:02d}", days_ahead
     
-    # Processar dados_externos_futebol de forma vetorizada
-    dados_externos_futebol['data_datetime'] = pd.to_datetime(dados_externos_futebol['data_hora'], format='%d/%m/%Y %H:%M')
-    dados_externos_futebol['data'] = dados_externos_futebol['data_datetime'].dt.date
-    
-    # Extrair parte da hora usando operação vetorizada
-    dados_externos_futebol['hora_inicio_h'] = dados_externos_futebol['hora_inicio'].str.split(':').str[0].astype(int)
-    dados_externos_futebol['hora_fim_h'] = dados_externos_futebol['hora_fim'].str.split(':').str[0].astype(int)
-    
-    # Criar objetos datetime para início e fim
-    dados_externos_futebol['data_inicio'] = pd.to_datetime(
-        dados_externos_futebol['data'].astype(str) + ' ' + 
-        dados_externos_futebol['hora_inicio_h'].astype(str) + ':00:00'
+    # Process start times
+    grade_todas_emissoras['hora_normalizada_inicio'], grade_todas_emissoras['dias_adicionais_inicio'] = zip(
+        *grade_todas_emissoras['hora_início'].apply(normalize_hour_and_get_days_ahead)
     )
     
-    dados_externos_futebol['data_fim'] = pd.to_datetime(
-        dados_externos_futebol['data'].astype(str) + ' ' + 
-        dados_externos_futebol['hora_fim_h'].astype(str) + ':59:59'
+    # Process end times
+    grade_todas_emissoras['hora_normalizada_fim'], grade_todas_emissoras['dias_adicionais_fim'] = zip(
+        *grade_todas_emissoras['hora_fim'].apply(normalize_hour_and_get_days_ahead)
     )
     
-    # Criar máscara para todos os eventos
-    for _, evento in dados_externos_futebol.iterrows():
-        mascara = (tabela_mae['data_hora'] >= evento['data_inicio']) & (tabela_mae['data_hora'] <= evento['data_fim'])
-        tabela_mae.loc[mascara, 'EXTERNO_FUTEBOL_CONCORRENTE_ON'] = 1
+    # Create datetime objects with the correct date adjustments
+    grade_todas_emissoras['data_hora_inicio'] = pd.to_datetime(
+        grade_todas_emissoras['data'] + ' ' + grade_todas_emissoras['hora_normalizada_inicio'], 
+        dayfirst=True
+    ) + pd.to_timedelta(grade_todas_emissoras['dias_adicionais_inicio'], unit='days')
+    
+    grade_todas_emissoras['data_hora_fim'] = pd.to_datetime(
+        grade_todas_emissoras['data'] + ' ' + grade_todas_emissoras['hora_normalizada_fim'], 
+        dayfirst=True
+    ) + pd.to_timedelta(grade_todas_emissoras['dias_adicionais_fim'], unit='days')
+    
+    # Instead of rounding, use floor for start time and ceiling for end time
+    # to make sure we capture all hours that the program touches
+    grade_todas_emissoras['data_hora_inicio_floor'] = grade_todas_emissoras['data_hora_inicio'].dt.floor('h')
+    grade_todas_emissoras['data_hora_fim_ceil'] = grade_todas_emissoras['data_hora_fim'].dt.ceil('h')
+    
+    # Handle remaining special cases
+    # If end time is earlier than start time and we haven't already adjusted days, add 1 day to end time
+    mask = (grade_todas_emissoras['data_hora_fim'] < grade_todas_emissoras['data_hora_inicio']) & (grade_todas_emissoras['dias_adicionais_fim'] == grade_todas_emissoras['dias_adicionais_inicio'])
+    grade_todas_emissoras.loc[mask, 'data_hora_fim'] = grade_todas_emissoras.loc[mask, 'data_hora_fim'] + pd.Timedelta(days=1)
+    grade_todas_emissoras.loc[mask, 'data_hora_fim_ceil'] = grade_todas_emissoras.loc[mask, 'data_hora_fim_ceil'] + pd.Timedelta(days=1)
+    
+    # Process event types if provided
+    if eventos:
+        for evento_key, programas in eventos.items():
+            # Filter programs for this event type
+            evento_programs = grade_todas_emissoras[grade_todas_emissoras['nome_programa'].isin(programas)].reset_index(drop=True)
+            
+            # Group by emissora
+            for emissora, emissora_programs in evento_programs.groupby('emissora'):
+                # Create emissora-specific column
+                col_name_emissora = f"EXTERNO_GRADE_{evento_key}_{emissora}_ON"
+                tabela_mae[col_name_emissora] = 0
+                
+                # For each program, mark rows in tabela_mae that fall within its time range
+                for _, programa in emissora_programs.iterrows():
+                    # Create mask for time range - use floor/ceil values to cover all hours touched
+                    mask = (tabela_mae['data_hora'] >= programa['data_hora_inicio_floor']) & (tabela_mae['data_hora'] < programa['data_hora_fim_ceil'])
+                    
+                    # Set flag only for the emissora-specific column
+                    tabela_mae.loc[mask, col_name_emissora] = 1
+    
+    # Process emissora-genre combinations
+    for emissora, emissora_data in grade_todas_emissoras.groupby('emissora'):
+        for genero in emissora_data['gênero'].unique():
+            # Skip empty genres
+            if pd.isna(genero) or genero == '':
+                continue
+                
+            # Create sanitized genre name
+            genero_sanitized = str(genero).replace(' ', '_').replace('-', '_').upper()
+            
+            # Create column name
+            col_name = f"EXTERNO_GRADE_GENERO_{emissora}_{genero_sanitized}_ON"
+            
+            # Initialize column with 0
+            tabela_mae[col_name] = 0
+            
+            # Filter programs for this combination
+            filtered_programs = grade_todas_emissoras[(grade_todas_emissoras['emissora'] == emissora) & 
+                                           (grade_todas_emissoras['gênero'] == genero)].reset_index(drop=True)
+            
+            # For each program, mark rows that fall within its time range
+            for _, programa in filtered_programs.iterrows():
+                # Create mask for time range - use floor/ceil values to cover all hours touched
+                mask = (tabela_mae['data_hora'] >= programa['data_hora_inicio_floor']) & (tabela_mae['data_hora'] < programa['data_hora_fim_ceil'])
+                
+                # Set flag
+                tabela_mae.loc[mask, col_name] = 1
     
     return tabela_mae
-
 
 def join_eventos_externos(tabela_mae):
     df_eventos = pd.read_csv('eventos_externos.csv', sep = ";")

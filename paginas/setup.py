@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from utils.data_processing import tratar_redes_sociais_linear, tratar_redes_sociais_canais, tratar_globoplay, tratar_tv_linear
-from utils.external_data import fetch_all_bcb_economic_indicators, join_futebol_external_data, join_tweets, join_eventos_externos
+from utils.external_data import fetch_all_bcb_economic_indicators, join_grade_external_data, join_tweets, join_eventos_externos
 from utils.data_processing import merge_data
 
 def setup_page():
@@ -221,8 +221,14 @@ def setup_page():
                 with st.status("Processando indicadores econômicos..."):
                     df_merged = fetch_all_bcb_economic_indicators(df_merged, 'data_hora', min_date, max_date)
                 
-                with st.status("Processando dados de futebol..."):
-                    df_merged = join_futebol_external_data(df_merged)
+                with st.status("Processando dados de grade..."):
+                    eventos = {
+                        'FUTEBOL' : ['FUTEBOL NOT', 'FUTEBOL MAT', 'FUTEBOL VES', 'FUTEBOL MAD'],
+                        'BBB' : ['BIG BROTHER BRASIL'],
+                        'AFAZENDA' : ['A FAZENDA'],
+                        'OLIMPIADAS' : ['JOGOS OLIMPICOS MAT', 'JOGOS OLIMPICOS VES', 'JOGOS OLIMPICOS MAD']
+                    }
+                    df_merged = join_grade_external_data(df_merged, eventos=eventos)
                 
                 with st.status("Processando dados de tweets..."):
                     df_merged = join_tweets(df_merged)

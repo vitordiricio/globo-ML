@@ -2,7 +2,7 @@ import streamlit as st
 
 from utils.config_page import configurar_pagina, mostrar_cabecalho
 from utils.data_processing import carregar_e_tratar_dados, merge_data
-from utils.external_data import fetch_all_bcb_economic_indicators, join_futebol_external_data, join_tweets, join_eventos_externos
+from utils.external_data import fetch_all_bcb_economic_indicators, join_grade_external_data, join_tweets, join_eventos_externos
 
 from paginas.analise_crencas import analise_fatores_externos, analise_grandes_eventos, analise_percepcao_marca, analise_social_impacto, analise_streaming_vs_linear
 from paginas.analise_tv_linear import analise_tv_linear
@@ -61,7 +61,13 @@ def main():
                     max_date = df_merged['data_hora'].max().strftime('%d/%m/%Y')
                     min_date = df_merged['data_hora'].min().strftime('%d/%m/%Y')
                     df_merged = fetch_all_bcb_economic_indicators(df_merged, 'data_hora', min_date, max_date)
-                    df_merged = join_futebol_external_data(df_merged)
+                    eventos = {
+                        'FUTEBOL' : ['FUTEBOL NOT', 'FUTEBOL MAT', 'FUTEBOL VES', 'FUTEBOL MAD'],
+                        'BBB' : ['BIG BROTHER BRASIL'],
+                        'AFAZENDA' : ['A FAZENDA'],
+                        'OLIMPIADAS' : ['JOGOS OLIMPICOS MAT', 'JOGOS OLIMPICOS VES', 'JOGOS OLIMPICOS MAD']
+                    }
+                    df_merged = join_grade_external_data(df_merged, eventos=eventos)
                     df_merged = join_tweets(df_merged)
                     df_merged = join_eventos_externos(df_merged)
                     df_merged = df_merged.fillna(0)

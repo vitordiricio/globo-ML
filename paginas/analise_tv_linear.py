@@ -131,7 +131,7 @@ def analise_tv_linear(df):
                 ts_data = ts_data.asfreq('D')  # Daily frequency
             
             # Fill missing values if any
-            ts_data = ts_data.fillna(method='ffill').fillna(method='bfill')
+            ts_data = ts_data.ffill().bfill()
             
             # Fit Holt-Winters model
             model = ExponentialSmoothing(

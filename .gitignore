@@ -185,6 +185,7 @@ database.db
 credentials.json
 
 rascunho.ipynb
+rascunho2.ipynb
 .devcontainer
 
 # End of https://www.toptal.com/developers/gitignore/api/python
