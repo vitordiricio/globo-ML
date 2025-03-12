@@ -57,23 +57,35 @@ def tratar_redes_sociais_canais(df):
     df['data_'] = df['data_'].dt.round('h')
     df = df.copy(); df.rename(columns={'interacoes\r': 'interacoes'}, inplace=True); df.loc[:, 'interacoes'] = df['interacoes'].str.replace('\r', '').fillna('').replace('', '0').astype(int)
     df['plataforma'] = df['plataforma'].str.upper()
-    df = df[['data_', 'perfil', 'plataforma', 'alcance', 'videoviews', 'impressoes', 'reacoes', 'comentarios', 'interacoes']]
+    
+    # Include the ID column for post counting
+    df = df[['data_', 'perfil', 'plataforma', 'alcance', 'videoviews', 'impressoes', 'reacoes', 'comentarios', 'interacoes', 'id']]
     
     # Fix for the FutureWarning about downcasting
     df = df.infer_objects().fillna(0)
     
+    # Modified aggregation to include posts_quantity
+    df_agregado = (
+        df.groupby(['data_', 'perfil', 'plataforma'])
+        .agg(
+            alcance=('alcance', 'sum'),
+            videoviews=('videoviews', 'sum'),
+            impressoes=('impressoes', 'sum'),
+            reacoes=('reacoes', 'sum'),
+            comentarios=('comentarios', 'sum'),
+            interacoes=('interacoes', 'sum'),
+            posts_quantity=('id', 'nunique')  # Count unique post IDs
+        )
+        .reset_index()
+    )
 
-    df = df[['data_', 'perfil', 'plataforma', 'alcance', 'videoviews', 'impressoes', 'reacoes', 'comentarios', 'interacoes']]
-
-    df = df.groupby(['data_', 'perfil', 'plataforma'], as_index=False).sum()
-
-    redes_canais = df.melt(
+    # Continue with the melt transformation
+    redes_canais = df_agregado.melt(
         id_vars=["perfil", "data_", "plataforma"], 
         var_name="metrica", 
         value_name="valor"
     )
     redes_canais["nova_coluna"] = redes_canais["plataforma"] + "_" + redes_canais["perfil"] + "_" + redes_canais["metrica"]
-
 
     # Pivot e limpeza final
     result_df = redes_canais.pivot(
@@ -370,7 +382,7 @@ def merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_li
     df_tv_linear = df_tv_linear.rename(columns=prefix_columns)
     
     # 2. For redes_sociais add RS_ prefix
-    prefix_columns = {col: f'RS_GLOBO_{col}' for col in df_redes.columns if col != 'data_hora'}
+    prefix_columns = {col: f'RS_TVGLOBO_{col}' for col in df_redes.columns if col != 'data_hora'}
     df_redes = df_redes.rename(columns=prefix_columns)
 
     # 2. For redes_sociais add RS_ prefix

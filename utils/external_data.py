@@ -5,6 +5,7 @@ import streamlit as st
 import numpy as np
 from utils.data_processing import fill_hourly_gaps
 import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 
 
 @st.cache_data
@@ -45,128 +46,138 @@ def join_grade_external_data(tabela_mae, eventos=None):
     Returns:
         DataFrame: tabela_mae with added columns
     """
-    # Read the TV programming data
-    globo_grade = pd.read_csv('globo_tv_linear.csv')
-    globo_grade.columns = globo_grade.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '').str.replace('[', '').str.replace(']', '')
-    globo_grade = globo_grade[['nome_programa', 'detalhe', 'quadro', 'gênero', 'emissora', 'data', 'hora_início', 'hora_fim', 'duração_prg']]
-    globo_grade = globo_grade.drop_duplicates()
-
-    band_grade = pd.read_csv('band_tv_linear.csv')
-    band_grade.columns = band_grade.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '').str.replace('[', '').str.replace(']', '')
-    band_grade = band_grade[['nome_programa', 'detalhe', 'quadro', 'gênero', 'emissora', 'data', 'hora_início', 'hora_fim', 'duração_prg']]
-    band_grade = band_grade.drop_duplicates()
-
-    sbt_grade = pd.read_csv('sbt_tv_linear.csv')
-    sbt_grade.columns = sbt_grade.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '').str.replace('[', '').str.replace(']', '')
-    sbt_grade = sbt_grade[['nome_programa', 'detalhe', 'quadro', 'gênero', 'emissora', 'data', 'hora_início', 'hora_fim', 'duração_prg']]
-    sbt_grade = sbt_grade.drop_duplicates()
-
-    record_grade = pd.read_csv('record_tv_linear.csv')
-    record_grade.columns = record_grade.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '').str.replace('[', '').str.replace(']', '')
-    record_grade = record_grade[['nome_programa', 'detalhe', 'quadro', 'gênero', 'emissora', 'data', 'hora_início', 'hora_fim', 'duração_prg']]
-    record_grade = record_grade.drop_duplicates()
-
-    grade_todas_emissoras = pd.concat([globo_grade, band_grade, sbt_grade, record_grade]).reset_index(drop=True)
+    # Make a copy of the input DataFrame to avoid warnings
+    tabela_mae = tabela_mae.copy()
     
+    # Ensure data_hora is datetime type
     if not pd.api.types.is_datetime64_dtype(tabela_mae['data_hora']):
-        tabela_mae = tabela_mae.copy()  # Create a copy to avoid SettingWithCopyWarning
         tabela_mae['data_hora'] = pd.to_datetime(tabela_mae['data_hora'])
-    else:
-        # Create a copy to avoid modifying the original
-        tabela_mae = tabela_mae.copy()
     
-    # Normalize hour format to 24h cycle and fix date accordingly
-    def normalize_hour_and_get_days_ahead(hour_str):
-        # Split by colon and take only the first two parts (hours and minutes)
-        parts = hour_str.split(':')
-        hours = int(parts[0])
-        minutes = int(parts[1])  # Ignore seconds if present
+    # Helper function to process a TV data file
+    def process_tv_file(file_path):
+        df = pd.read_csv(file_path)
+        df.columns = df.columns.str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '').str.replace('[', '').str.replace(']', '')
+        df = df[['nome_programa', 'detalhe', 'quadro', 'gênero', 'emissora', 'data', 'hora_início', 'hora_fim', 'duração_prg']]
+        return df.drop_duplicates()
+    
+    # Process all TV data files in parallel
+    tv_files = ['globo_tv_linear.csv', 'band_tv_linear.csv', 'sbt_tv_linear.csv', 'record_tv_linear.csv']
+    
+    with ThreadPoolExecutor() as executor:
+        dfs = list(executor.map(process_tv_file, tv_files))
+    
+    grade_todas_emissoras = pd.concat(dfs, ignore_index=True)
+    
+    # Normalize hour format to 24h cycle (vetorizado)
+    def normalize_hours(hour_series):
+        # Separar horas e minutos em colunas
+        hours_minutes = hour_series.str.split(':', expand=True)
+        hours = hours_minutes[0].astype(int)
+        minutes = hours_minutes[1].astype(int)
         
-        days_ahead = hours // 24  # Integer division to get days
-        normalized_hours = hours % 24  # Modulo to get hours in 24h format
-        return f"{normalized_hours:02d}:{minutes:02d}", days_ahead
+        # Calcular dias adicionais e horas normalizadas
+        days_ahead = hours // 24
+        normalized_hours = hours % 24
+        
+        # Formatar de volta para strings
+        normalized_time_strs = normalized_hours.astype(str).str.zfill(2) + ':' + minutes.astype(str).str.zfill(2)
+        
+        return normalized_time_strs, days_ahead
     
-    # Process start times
-    grade_todas_emissoras['hora_normalizada_inicio'], grade_todas_emissoras['dias_adicionais_inicio'] = zip(
-        *grade_todas_emissoras['hora_início'].apply(normalize_hour_and_get_days_ahead)
-    )
+    # Processar horários de início e fim
+    grade_todas_emissoras['hora_normalizada_inicio'], grade_todas_emissoras['dias_adicionais_inicio'] = normalize_hours(grade_todas_emissoras['hora_início'])
+    grade_todas_emissoras['hora_normalizada_fim'], grade_todas_emissoras['dias_adicionais_fim'] = normalize_hours(grade_todas_emissoras['hora_fim'])
     
-    # Process end times
-    grade_todas_emissoras['hora_normalizada_fim'], grade_todas_emissoras['dias_adicionais_fim'] = zip(
-        *grade_todas_emissoras['hora_fim'].apply(normalize_hour_and_get_days_ahead)
-    )
-    
-    # Create datetime objects with the correct date adjustments
+    # Criar objetos datetime com ajustes de data
     grade_todas_emissoras['data_hora_inicio'] = pd.to_datetime(
-        grade_todas_emissoras['data'] + ' ' + grade_todas_emissoras['hora_normalizada_inicio'], 
+        grade_todas_emissoras['data'] + ' ' + grade_todas_emissoras['hora_normalizada_inicio'],
         dayfirst=True
     ) + pd.to_timedelta(grade_todas_emissoras['dias_adicionais_inicio'], unit='days')
     
     grade_todas_emissoras['data_hora_fim'] = pd.to_datetime(
-        grade_todas_emissoras['data'] + ' ' + grade_todas_emissoras['hora_normalizada_fim'], 
+        grade_todas_emissoras['data'] + ' ' + grade_todas_emissoras['hora_normalizada_fim'],
         dayfirst=True
     ) + pd.to_timedelta(grade_todas_emissoras['dias_adicionais_fim'], unit='days')
     
-    # Instead of rounding, use floor for start time and ceiling for end time
-    # to make sure we capture all hours that the program touches
+    # Tratar casos especiais: hora fim anterior à hora início
+    mask = (grade_todas_emissoras['data_hora_fim'] < grade_todas_emissoras['data_hora_inicio']) & (grade_todas_emissoras['dias_adicionais_fim'] == grade_todas_emissoras['dias_adicionais_inicio'])
+    if mask.any():
+        grade_todas_emissoras.loc[mask, 'data_hora_fim'] = grade_todas_emissoras.loc[mask, 'data_hora_fim'] + pd.Timedelta(days=1)
+    
+    # Calcular limites de horas (floor/ceiling)
     grade_todas_emissoras['data_hora_inicio_floor'] = grade_todas_emissoras['data_hora_inicio'].dt.floor('h')
     grade_todas_emissoras['data_hora_fim_ceil'] = grade_todas_emissoras['data_hora_fim'].dt.ceil('h')
     
-    # Handle remaining special cases
-    # If end time is earlier than start time and we haven't already adjusted days, add 1 day to end time
-    mask = (grade_todas_emissoras['data_hora_fim'] < grade_todas_emissoras['data_hora_inicio']) & (grade_todas_emissoras['dias_adicionais_fim'] == grade_todas_emissoras['dias_adicionais_inicio'])
-    grade_todas_emissoras.loc[mask, 'data_hora_fim'] = grade_todas_emissoras.loc[mask, 'data_hora_fim'] + pd.Timedelta(days=1)
-    grade_todas_emissoras.loc[mask, 'data_hora_fim_ceil'] = grade_todas_emissoras.loc[mask, 'data_hora_fim_ceil'] + pd.Timedelta(days=1)
+    # Dicionário para armazenar todas as novas colunas
+    new_columns = {}
     
-    # Process event types if provided
+    # Função para obter todos os timestamps horários em um intervalo
+    def get_hourly_timestamps(start_time, end_time):
+        return pd.date_range(start=start_time, end=end_time - pd.Timedelta(seconds=1), freq='h')
+    
+    # Processar tipos de eventos
     if eventos:
         for evento_key, programas in eventos.items():
-            # Filter programs for this event type
-            evento_programs = grade_todas_emissoras[grade_todas_emissoras['nome_programa'].isin(programas)].reset_index(drop=True)
+            # Filtrar programas relevantes
+            evento_programs = grade_todas_emissoras[grade_todas_emissoras['nome_programa'].isin(programas)]
             
-            # Group by emissora
+            # Processar por emissora
             for emissora, emissora_programs in evento_programs.groupby('emissora'):
-                # Create emissora-specific column
-                col_name_emissora = f"EXTERNO_GRADE_{evento_key}_{emissora}_ON"
-                tabela_mae[col_name_emissora] = 0
+                col_name = f"EXTERNO_GRADE_{evento_key}_{emissora}_ON"
                 
-                # For each program, mark rows in tabela_mae that fall within its time range
+                # Obter todos os timestamps para esta combinação evento-emissora
+                event_timestamps = set()
                 for _, programa in emissora_programs.iterrows():
-                    # Create mask for time range - use floor/ceil values to cover all hours touched
-                    mask = (tabela_mae['data_hora'] >= programa['data_hora_inicio_floor']) & (tabela_mae['data_hora'] < programa['data_hora_fim_ceil'])
-                    
-                    # Set flag only for the emissora-specific column
-                    tabela_mae.loc[mask, col_name_emissora] = 1
+                    hourly_timestamps = get_hourly_timestamps(
+                        programa['data_hora_inicio_floor'],
+                        programa['data_hora_fim_ceil']
+                    )
+                    event_timestamps.update(hourly_timestamps)
+                
+                # Criar máscara booleana para tabela_mae
+                new_columns[col_name] = tabela_mae['data_hora'].isin(event_timestamps).astype(int)
     
-    # Process emissora-genre combinations
-    for emissora, emissora_data in grade_todas_emissoras.groupby('emissora'):
-        for genero in emissora_data['gênero'].unique():
-            # Skip empty genres
-            if pd.isna(genero) or genero == '':
+    # Processar combinações gênero-emissora
+    for emissora in grade_todas_emissoras['emissora'].unique():
+        emissora_data = grade_todas_emissoras[grade_todas_emissoras['emissora'] == emissora]
+        
+        for genero in emissora_data['gênero'].dropna().unique():
+            if genero == '':
                 continue
                 
-            # Create sanitized genre name
+            # Criar nome de gênero sanitizado
             genero_sanitized = str(genero).replace(' ', '_').replace('-', '_').upper()
-            
-            # Create column name
             col_name = f"EXTERNO_GRADE_GENERO_{emissora}_{genero_sanitized}_ON"
             
-            # Initialize column with 0
-            tabela_mae[col_name] = 0
+            # Obter programas para esta combinação gênero-emissora
+            filtered_programs = grade_todas_emissoras[
+                (grade_todas_emissoras['emissora'] == emissora) & 
+                (grade_todas_emissoras['gênero'] == genero)
+            ]
             
-            # Filter programs for this combination
-            filtered_programs = grade_todas_emissoras[(grade_todas_emissoras['emissora'] == emissora) & 
-                                           (grade_todas_emissoras['gênero'] == genero)].reset_index(drop=True)
-            
-            # For each program, mark rows that fall within its time range
+            # Obter todos os timestamps para esta combinação gênero-emissora
+            genre_timestamps = set()
             for _, programa in filtered_programs.iterrows():
-                # Create mask for time range - use floor/ceil values to cover all hours touched
-                mask = (tabela_mae['data_hora'] >= programa['data_hora_inicio_floor']) & (tabela_mae['data_hora'] < programa['data_hora_fim_ceil'])
-                
-                # Set flag
-                tabela_mae.loc[mask, col_name] = 1
+                hourly_timestamps = get_hourly_timestamps(
+                    programa['data_hora_inicio_floor'],
+                    programa['data_hora_fim_ceil']
+                )
+                genre_timestamps.update(hourly_timestamps)
+            
+            # Criar máscara booleana para tabela_mae
+            new_columns[col_name] = tabela_mae['data_hora'].isin(genre_timestamps).astype(int)
     
-    return tabela_mae
+    # Criar um DataFrame com todas as novas colunas de uma vez
+    if new_columns:
+        new_df = pd.DataFrame(new_columns, index=tabela_mae.index)
+        
+        # Concatenar com o DataFrame original
+        result = pd.concat([tabela_mae, new_df], axis=1)
+        return result
+    else:
+        # Se nenhuma nova coluna foi criada, retornar o DataFrame original
+        return tabela_mae
+
 
 def join_eventos_externos(tabela_mae):
     df_eventos = pd.read_csv('eventos_externos.csv', sep = ";")
