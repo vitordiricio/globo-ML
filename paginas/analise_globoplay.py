@@ -81,11 +81,11 @@ def analise_globoplay(df):
     st.markdown("""
     As tabelas abaixo apresentam métricas-chave do Globoplay organizadas em três grupos principais:
 
-    1. **Tipos de Usuário**: Assinantes, Logados Free e Anônimos - mostra diferenças de comportamento por tipo de acesso
-    2. **Dispositivos**: Mobile vs Outros Devices - revela preferências de visualização em diferentes plataformas
-    3. **Tipos de Conteúdo**: Simulcasting (ao vivo) vs VOD (sob demanda) - ilustra padrões de consumo por formato
+    1. **Audiência**: Mostra o volume de usuários por tipo de acesso
+    2. **Engajamento**: Revela as horas totais de consumo por tipo de usuário
+    3. **Ativação**: Indica a intensidade de uso (horas médias por usuário)
 
-    Cada métrica inclui valor médio, desvio padrão e, quando aplicável, a média por usuário (que revela intensidade de uso).
+    Cada métrica oferece uma perspectiva diferente sobre o comportamento dos usuários na plataforma.
     """)
 
     # Check if we have the required columns for each table
@@ -145,16 +145,13 @@ def analise_globoplay(df):
         fig.update_layout(
             margin=dict(l=20, r=20, t=30, b=20),
             height=300,
-            legend=dict(orientation="h", yanchor="bottom", y=-0.2)
+            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
         )
         
         return fig
 
     # ROW 1: Assinantes vs Logados Free vs Anônimos
     st.markdown("### Usuários: Assinantes vs Logados Free vs Anônimos")
-
-    # Create containers for tables and pie charts
-    col1a, col1b = st.columns([3, 2])
 
     # Get values for pie charts - User Types
     user_type_values = {}
@@ -201,8 +198,12 @@ def analise_globoplay(df):
         anonimos_users = selected_df["GP_usuários_anonimos"].mean()
         user_type_avg_hours["Anônimos"] = anonimos_hours / anonimos_users if anonimos_users > 0 else 0
 
-    # Left column: Tables
-    with col1a:
+    # Create three columns for tables
+    col1, col2, col3 = st.columns(3)
+
+    # First column: Audiência (Users)
+    with col1:
+        st.markdown("#### Audiência")
         reach_metrics = {
             "Usuários Assinantes": "GP_usuários_assinantes_",
             "Usuários Logados Free": "GP_usuários_de_vídeo_logados_free",
@@ -211,17 +212,22 @@ def analise_globoplay(df):
         
         reach_df = create_metrics_table(selected_df, reach_metrics)
         st.dataframe(reach_df, hide_index=True)
-        
+
+    # Second column: Engajamento (Hours)
+    with col2:
+        st.markdown("#### Engajamento")
         engagement_metrics = {
             "Horas Consumidas Assinantes": "GP_horas_consumidas_assinantes",
             "Horas Consumidas Logados Free": "GP_horas_consumidas_de_logados_free",
             "Horas Consumidas Anônimos": "GP_horas_consumidas_de_anonimos"
         }
         
-        # Create basic metrics table
         engagement_df = create_metrics_table(selected_df, engagement_metrics)
-        
-        # Calculate average hours per user
+        st.dataframe(engagement_df, hide_index=True)
+
+    # Third column: Ativação (Average Hours)
+    with col3:
+        st.markdown("#### Ativação")
         avg_hours_data = []
         
         # Add average hours data if available
@@ -237,23 +243,25 @@ def analise_globoplay(df):
         # Add to table if we have data
         if avg_hours_data:
             avg_hours_df = pd.DataFrame(avg_hours_data)
-            
-            # Combine tables
-            combined_df = pd.concat([engagement_df, avg_hours_df])
-            st.dataframe(combined_df, hide_index=True)
-        else:
-            st.dataframe(engagement_df, hide_index=True)
+            st.dataframe(avg_hours_df, hide_index=True)
 
-    # Right column: Pie charts for Users, Hours, and Average
-    with col1b:
+    # Create three columns for charts
+    chart_col1, chart_col2, chart_col3 = st.columns(3)
+
+    # First column: Users pie chart
+    with chart_col1:
         if user_type_values:
             users_pie = create_pie_chart(user_type_values, "Distribuição de Usuários")
             st.plotly_chart(users_pie, use_container_width=True)
-        
+    
+    # Second column: Hours pie chart
+    with chart_col2:
         if user_type_hours:
             hours_pie = create_pie_chart(user_type_hours, "Distribuição de Horas Consumidas")
             st.plotly_chart(hours_pie, use_container_width=True)
-        
+    
+    # Third column: Average hours pie chart
+    with chart_col3:
         if user_type_avg_hours:
             avg_hours_pie = create_pie_chart(user_type_avg_hours, "Horas Médias por Usuário")
             st.plotly_chart(avg_hours_pie, use_container_width=True)
@@ -281,9 +289,6 @@ def analise_globoplay(df):
 
     # ROW 2: Mobile vs Outros Devices
     st.markdown("### Usuários: Mobile vs Outros Devices")
-
-    # Create containers for tables and pie charts
-    col2a, col2b = st.columns([3, 2])
 
     # Get values for pie charts - Devices
     device_type_values = {}
@@ -319,8 +324,12 @@ def analise_globoplay(df):
         outros_users = selected_df["GP_usuários_em_demais_devices"].mean()
         device_type_avg_hours["Outros Devices"] = outros_hours / outros_users if outros_users > 0 else 0
 
-    # Left column: Tables
-    with col2a:
+    # Create three columns for tables
+    col1, col2, col3 = st.columns(3)
+
+    # First column: Audiência (Users)
+    with col1:
+        st.markdown("#### Audiência")
         reach_metrics = {
             "Usuários Mobile": "GP_usuários_em_mobile",
             "Usuários Outros Devices": "GP_usuários_em_demais_devices"
@@ -328,16 +337,21 @@ def analise_globoplay(df):
         
         reach_df = create_metrics_table(selected_df, reach_metrics)
         st.dataframe(reach_df, hide_index=True)
-        
+
+    # Second column: Engajamento (Hours)
+    with col2:
+        st.markdown("#### Engajamento")
         engagement_metrics = {
             "Horas Consumidas Mobile": "GP_horas_consumidas_mobile",
             "Horas Consumidas Outros Devices": "GP_horas_consumidas_em_demais_devices"
         }
         
-        # Create basic metrics table
         engagement_df = create_metrics_table(selected_df, engagement_metrics)
-        
-        # Calculate average hours per user
+        st.dataframe(engagement_df, hide_index=True)
+
+    # Third column: Ativação (Average Hours)
+    with col3:
+        st.markdown("#### Ativação")
         avg_hours_data = []
         
         # Add average hours data if available
@@ -353,23 +367,25 @@ def analise_globoplay(df):
         # Add to table if we have data
         if avg_hours_data:
             avg_hours_df = pd.DataFrame(avg_hours_data)
-            
-            # Combine tables
-            combined_df = pd.concat([engagement_df, avg_hours_df])
-            st.dataframe(combined_df, hide_index=True)
-        else:
-            st.dataframe(engagement_df, hide_index=True)
+            st.dataframe(avg_hours_df, hide_index=True)
 
-    # Right column: Pie charts for Devices
-    with col2b:
+    # Create three columns for charts
+    chart_col1, chart_col2, chart_col3 = st.columns(3)
+
+    # First column: Users pie chart
+    with chart_col1:
         if device_type_values:
             users_pie = create_pie_chart(device_type_values, "Distribuição de Usuários por Dispositivo")
             st.plotly_chart(users_pie, use_container_width=True)
-        
+    
+    # Second column: Hours pie chart
+    with chart_col2:
         if device_type_hours:
             hours_pie = create_pie_chart(device_type_hours, "Distribuição de Horas Consumidas por Dispositivo")
             st.plotly_chart(hours_pie, use_container_width=True)
-        
+    
+    # Third column: Average hours pie chart
+    with chart_col3:
         if device_type_avg_hours:
             avg_hours_pie = create_pie_chart(device_type_avg_hours, "Horas Médias por Usuário por Dispositivo")
             st.plotly_chart(avg_hours_pie, use_container_width=True)
@@ -407,9 +423,6 @@ def analise_globoplay(df):
     # ROW 3: Simulcasting vs VOD
     st.markdown("### Usuários: Simulcasting (TVG ao Vivo) vs VOD")
 
-    # Create containers for tables and pie charts
-    col3a, col3b = st.columns([3, 2])
-
     # Get values for pie charts - Content Types
     content_type_values = {}
     content_type_hours = {}
@@ -444,8 +457,12 @@ def analise_globoplay(df):
         vod_items = selected_df["GP_qtd_de_integras_publicadas"].mean()
         content_type_avg_hours["VOD (Íntegras)"] = vod_hours / vod_items if vod_items > 0 else 0
 
-    # Left column: Tables
-    with col3a:
+    # Create three columns for tables
+    col1, col2, col3 = st.columns(3)
+
+    # First column: Audiência (Users)
+    with col1:
+        st.markdown("#### Audiência")
         reach_metrics = {
             "Usuários TVG ao Vivo": "GP_usuários_em_tvg_ao_vivo",
             "Qtd Íntegras Publicadas": "GP_qtd_de_integras_publicadas"
@@ -453,16 +470,21 @@ def analise_globoplay(df):
         
         reach_df = create_metrics_table(selected_df, reach_metrics)
         st.dataframe(reach_df, hide_index=True)
-        
+
+    # Second column: Engajamento (Hours)
+    with col2:
+        st.markdown("#### Engajamento")
         engagement_metrics = {
             "Horas Consumidas TVG ao Vivo": "GP_horas_consumidas_em_tvg_ao_vivo",
             "Horas Disponíveis Íntegras": "GP_qtd_de_horas_disponíveis_integras"
         }
         
-        # Create basic metrics table
         engagement_df = create_metrics_table(selected_df, engagement_metrics)
-        
-        # Calculate average hours per user/item
+        st.dataframe(engagement_df, hide_index=True)
+
+    # Third column: Ativação (Average Hours)
+    with col3:
+        st.markdown("#### Ativação")
         avg_hours_data = []
         
         # Add average hours data if available
@@ -485,23 +507,25 @@ def analise_globoplay(df):
         # Add to table if we have data
         if avg_hours_data:
             avg_hours_df = pd.DataFrame(avg_hours_data)
-            
-            # Combine tables
-            combined_df = pd.concat([engagement_df, avg_hours_df])
-            st.dataframe(combined_df, hide_index=True)
-        else:
-            st.dataframe(engagement_df, hide_index=True)
+            st.dataframe(avg_hours_df, hide_index=True)
 
-    # Right column: Pie charts for Content Types
-    with col3b:
+    # Create three columns for charts
+    chart_col1, chart_col2, chart_col3 = st.columns(3)
+
+    # First column: Users pie chart
+    with chart_col1:
         if content_type_values:
             users_pie = create_pie_chart(content_type_values, "Distribuição de Usuários/Itens por Tipo de Conteúdo")
             st.plotly_chart(users_pie, use_container_width=True)
-        
+    
+    # Second column: Hours pie chart
+    with chart_col2:
         if content_type_hours:
             hours_pie = create_pie_chart(content_type_hours, "Distribuição de Horas por Tipo de Conteúdo")
             st.plotly_chart(hours_pie, use_container_width=True)
-        
+    
+    # Third column: Average hours pie chart
+    with chart_col3:
         if content_type_avg_hours:
             avg_hours_pie = create_pie_chart(content_type_avg_hours, "Horas Médias por Usuário/Item por Tipo de Conteúdo")
             st.plotly_chart(avg_hours_pie, use_container_width=True)

@@ -1,16 +1,15 @@
 # utils/analise_tv_linear.py
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.regression.quantile_regression import QuantReg
 import statsmodels.api as sm
-import numpy as np
-from scipy.fft import rfft, rfftfreq
 from statsmodels.tsa.arima.model import ARIMA
-from statsmodels.tsa.statespace.structural import UnobservedComponents
 from sklearn.metrics import mean_absolute_error, r2_score
+
 
 def analise_tv_linear(df):
     """
@@ -101,661 +100,311 @@ def analise_tv_linear(df):
         st.dataframe(metrics_df, hide_index=True, use_container_width=True)
     else:
         st.warning(f"A métrica {selected_metric_type} não está disponível nos dados.")
+
+    # ================= MAIN ANALYSIS SECTIONS =================
     
-    # 3. Trend and Seasonality Analysis (Fourier + ARIMA)
-    st.subheader("Análise de Tendência e Sazonalidade (Fourier + ARIMA)")
-    
-    st.markdown("""
-    Esta análise utiliza uma combinação de Transformada de Fourier e modelo ARIMA para 
-    decompor a série temporal da audiência em componentes. 
-    
-    A Transformada de Fourier identifica os padrões cíclicos mais relevantes na audiência, 
-    enquanto o ARIMA modela a tendência e os resíduos após remover a sazonalidade. Esta
-    abordagem permite capturar padrões complexos na audiência.
-    """)
-    
-    if "LINEAR_GLOBO_cov%" in selected_df.columns and len(selected_df) >= 14:  # Need sufficient data points
-        # Prepare data for time series analysis
-        ts_data = selected_df.set_index('data_hora')['LINEAR_GLOBO_cov%']
+    # Ensure we have enough data for analysis
+    if "LINEAR_GLOBO_cov%" in selected_df.columns and len(selected_df) >= 14:
+        # Prepare data for all models
+        # Create a copy of the dataframe with data_hora as index
+        analysis_df = selected_df.copy().set_index('data_hora')
+        ts_data = analysis_df['LINEAR_GLOBO_cov%'].copy()
+        
+        # Ensure no missing values and proper frequency
+        ts_data = ts_data.fillna(method='ffill').fillna(method='bfill')
+        
+        # Determine seasonal period based on granularity
+        if granularity == "Semanal":
+            if len(ts_data) >= 104:  # At least 2 years of data
+                seasonal_period = 52  # Yearly seasonality
+            else:
+                seasonal_period = 4   # Monthly seasonality
+        else:
+            seasonal_period = 7  # Weekly seasonality for daily data
+
+        # ================= SECTION 1: ARIMA MODEL =================
+        st.subheader("1️⃣ Previsão de Tendência e Sazonalidade → ARIMA")
+        st.markdown("""
+        Esta análise utiliza o modelo ARIMA (AutoRegressive Integrated Moving Average) para 
+        modelar a série temporal da audiência, permitindo identificar tendências e fazer previsões.
+        """)
         
         try:
-            # Make sure index has frequency
-            if granularity == "Semanal":
-                ts_data = ts_data.asfreq('W-MON')  # Weekly frequency (Mondays)
-            else:
-                ts_data = ts_data.asfreq('D')  # Daily frequency
+            # Prepare data for ARIMA
+            model_data = pd.DataFrame({'y': ts_data})
+            model_data = model_data.apply(pd.to_numeric, errors='coerce').fillna(0)
             
-            # Fill missing values if any
-            ts_data = ts_data.ffill().bfill()
+            # Fit ARIMA model with seasonal component
+            arima_order = (1, 1, 1)  # p, d, q parameters
+            seasonal_order = (1, 0, 1, seasonal_period)  # P, D, Q, s parameters
             
-            # Define helper function for Fourier features
-            def create_fourier_features(y, num_periods, harmonics=3):
-                """
-                Create Fourier features based on the dominant frequencies
-                
-                Args:
-                    y: Time series data
-                    num_periods: List of periods (e.g., [7, 30, 365] for daily, monthly, yearly patterns)
-                    harmonics: Number of harmonics to include for each period
-                    
-                Returns:
-                    DataFrame with Fourier features
-                """
-                n = len(y)
-                fourier_df = pd.DataFrame(index=y.index)
-                
-                for period in num_periods:
-                    for harmonic in range(1, harmonics + 1):
-                        sin_name = f'sin_{period}_{harmonic}'
-                        cos_name = f'cos_{period}_{harmonic}'
-                        
-                        # Create sine and cosine features for each period/harmonic
-                        fourier_df[sin_name] = np.sin(2 * np.pi * harmonic * np.arange(n) / period)
-                        fourier_df[cos_name] = np.cos(2 * np.pi * harmonic * np.arange(n) / period)
-                        
-                return fourier_df
-                
-            # Use FFT to identify dominant frequencies
-            def find_dominant_frequencies(y, top_n=3):
-                """
-                Use Fast Fourier Transform to identify dominant frequencies
-                
-                Args:
-                    y: Time series data
-                    top_n: Number of dominant frequencies to return
-                    
-                Returns:
-                    List of dominant periods
-                """
-                n = len(y)
-                y_fft = rfft(y.values)
-                freqs = rfftfreq(n)
-                
-                # Exclude the first frequency (DC component)
-                power = np.abs(y_fft[1:]) ** 2
-                idx = np.argsort(power)[-top_n:]
-                dominant_freqs = freqs[idx + 1]  # +1 because we excluded DC
-                
-                # Convert frequencies to periods
-                dominant_periods = [int(round(1 / freq)) for freq in dominant_freqs if freq > 0]
-                
-                return dominant_periods
-            
-            # Setup for Fourier + ARIMA analysis
-            # Determine periods based on granularity
-            if granularity == "Diário":
-                # For daily data, manually specify periods (daily=1, weekly=7, monthly=30/31)
-                # Using predetermined periods instead of FFT for more interpretable results
-                periods = [7, 30]  # Weekly and monthly patterns
-            else:
-                # For weekly data, look for monthly and quarterly patterns
-                periods = [4, 13]  # 4 weeks in a month, ~13 weeks in a quarter
-            
-            # Also detect dominant frequencies from the data using FFT
-            fft_periods = find_dominant_frequencies(ts_data)
-            
-            # Combine manual periods with detected periods, remove duplicates
-            all_periods = list(set(periods + fft_periods))
-            all_periods.sort()
-            
-            # Create Fourier features
-            fourier_df = create_fourier_features(ts_data, all_periods, harmonics=2)
-            
-            # Combine time series data with Fourier features
-            data_with_features = pd.DataFrame({'y': ts_data})
-            data_with_features = pd.concat([data_with_features, fourier_df], axis=1)
-            
-            # Split data for fitting and validation
-            train_size = int(len(data_with_features) * 0.8)
-            train_data = data_with_features.iloc[:train_size]
-            test_data = data_with_features.iloc[train_size:]
-            
-            # Build ARIMA model with Fourier features
-            # Start with a simple model (p=1, d=1, q=1) and adjust if needed
-            exog_train = train_data.drop('y', axis=1)
-            exog_test = test_data.drop('y', axis=1)
-            
-            # Fit ARIMA model
-            arima_model = ARIMA(
-                train_data['y'],
-                exog=exog_train,
-                order=(1, 1, 1)  # Simple ARIMA model with Fourier exogenous variables
+            # Use SARIMAX for seasonal modeling
+            mod = sm.tsa.statespace.SARIMAX(
+                model_data['y'], 
+                order=arima_order,
+                seasonal_order=seasonal_order,
+                enforce_stationarity=True,
+                enforce_invertibility=False,
+                robust=True
             )
             
-            arima_fit = arima_model.fit()
+            fit_res = mod.fit(disp=False)
             
-            # Predict on train data
-            fitted_values = arima_fit.fittedvalues
+            # Make in-sample predictions
+            predictions = fit_res.get_prediction().predicted_mean
             
-            # Predict on test data
-            forecast = arima_fit.forecast(steps=len(test_data), exog=exog_test)
+            # Make sure predictions have same index as original data
+            predictions = pd.Series(predictions, index=model_data.index)
             
             # Calculate metrics
-            train_r2 = r2_score(train_data['y'].iloc[1:], fitted_values)
-            test_r2 = r2_score(test_data['y'], forecast)
-            train_mae = mean_absolute_error(train_data['y'].iloc[1:], fitted_values)
-            test_mae = mean_absolute_error(test_data['y'], forecast)
+            arima_r_squared = 1 - ((model_data['y'] - predictions) ** 2).sum() / ((model_data['y'] - model_data['y'].mean()) ** 2).sum()
+            arima_mae = mean_absolute_error(model_data['y'], predictions)
             
-            # Refit on full data for final model
-            full_model = ARIMA(
-                data_with_features['y'],
-                exog=data_with_features.drop('y', axis=1),
-                order=(1, 1, 1)
-            )
-            full_fit = full_model.fit()
+            # Calculate forecast for next periods
+            forecast_periods = 7 if granularity == "Diário" else 4
             
-            # Create future Fourier features for forecasting
-            forecast_periods = 14 if granularity == "Diário" else 8  # 2 weeks or 8 weeks
+            # Create future date range
+            if granularity == "Diário":
+                future_dates = pd.date_range(start=ts_data.index[-1] + pd.Timedelta(days=1), 
+                                            periods=forecast_periods, freq='D')
+            else:
+                future_dates = pd.date_range(start=ts_data.index[-1] + pd.Timedelta(days=7), 
+                                            periods=forecast_periods, freq='W-MON')
             
-            # Create a date range for future periods
-            future_dates = pd.date_range(
-                start=data_with_features.index[-1] + pd.Timedelta('1 day' if granularity == "Diário" else '1 week'),
-                periods=forecast_periods, 
-                freq='D' if granularity == "Diário" else 'W-MON'
-            )
+            # Generate forecast
+            forecast = fit_res.get_forecast(steps=forecast_periods).predicted_mean
+            forecast = pd.Series(forecast, index=future_dates)
             
-            n_total = len(data_with_features) + forecast_periods
-            future_fourier = pd.DataFrame(index=future_dates)
+            # Calculate trend direction
+            trend_start = predictions.iloc[0]
+            trend_end = predictions.iloc[-1]
+            trend_direction = trend_end - trend_start
+            arima_daily_pp = trend_direction / len(predictions)
             
-            # Generate Fourier features for future periods
-            for period in all_periods:
-                for harmonic in range(1, 3):
-                    idx_offset = len(data_with_features)
-                    sin_name = f'sin_{period}_{harmonic}'
-                    cos_name = f'cos_{period}_{harmonic}'
-                    
-                    future_fourier[sin_name] = np.sin(2 * np.pi * harmonic * np.arange(idx_offset, n_total) / period)
-                    future_fourier[cos_name] = np.cos(2 * np.pi * harmonic * np.arange(idx_offset, n_total) / period)
-            
-            # Make forecast
-            future_forecast = full_fit.forecast(steps=forecast_periods, exog=future_fourier)
-            
-            # Combine original data with forecast for plotting
-            fitted_with_forecast = pd.Series(
-                index=pd.concat([pd.Series(index=data_with_features.index), pd.Series(index=future_dates)]).index,
-                dtype=float
-            )
-            
-            # Fill with fitted values and forecast
-            fitted_with_forecast.loc[data_with_features.index] = full_fit.fittedvalues
-            fitted_with_forecast.loc[future_dates] = future_forecast
-            
-            # Plot results
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                # Create plot for original data, fitted values, and forecast
-                fig_data = go.Figure()
-                
-                # Add original data
-                fig_data.add_trace(go.Scatter(
-                    x=ts_data.index, 
-                    y=ts_data.values,
-                    mode='lines',
-                    name='Dados Originais',
-                    line=dict(color='blue')
-                ))
-                
-                # Add fitted values
-                fig_data.add_trace(go.Scatter(
-                    x=data_with_features.index, 
-                    y=full_fit.fittedvalues,
-                    mode='lines',
-                    name='Modelo Ajustado',
-                    line=dict(color='green')
-                ))
-                
-                # Add forecast
-                fig_data.add_trace(go.Scatter(
-                    x=future_dates, 
-                    y=future_forecast,
-                    mode='lines',
-                    name='Previsão',
-                    line=dict(color='red', dash='dash')
-                ))
-                
-                fig_data.update_layout(
-                    title=f'Modelo Fourier+ARIMA (R² = {train_r2:.2f})',
-                    xaxis_title='Data',
-                    yaxis_title='cov% Globo',
-                    legend=dict(orientation="h", y=1.1)
-                )
-                
-                st.plotly_chart(fig_data, use_container_width=True)
-            
-            with col2:
-                # Plot the seasonal components
-                # Compute the contribution of each period to the overall seasonality
-                seasonal_contributions = {}
-                
-                # For each period, compute its contribution
-                for period in all_periods:
-                    # Sum the contribution of all harmonics for this period
-                    period_contribution = np.zeros(len(ts_data))
-                    
-                    for harmonic in range(1, 3):
-                        sin_name = f'sin_{period}_{harmonic}'
-                        cos_name = f'cos_{period}_{harmonic}'
-                        
-                        # Get the coefficients from the ARIMA model
-                        sin_coef = full_fit.params.get(sin_name, 0)
-                        cos_coef = full_fit.params.get(cos_name, 0)
-                        
-                        # Compute the contribution
-                        sin_contrib = sin_coef * fourier_df[sin_name].values
-                        cos_contrib = cos_coef * fourier_df[cos_name].values
-                        
-                        period_contribution += sin_contrib + cos_contrib
-                    
-                    # Store the mean absolute contribution for this period
-                    seasonal_contributions[period] = np.mean(np.abs(period_contribution))
-                
-                # Create a dataframe for plotting
-                periods_df = pd.DataFrame({
-                    'Período': [f"{p} dias" if granularity == "Diário" else f"{p} semanas" for p in seasonal_contributions.keys()],
-                    'Contribuição': list(seasonal_contributions.values())
-                })
-                
-                # Sort by contribution
-                periods_df = periods_df.sort_values('Contribuição', ascending=False)
-                
-                # Plot
-                fig_seasonal = px.bar(
-                    periods_df, 
-                    x='Período', 
-                    y='Contribuição',
-                    title='Componentes Sazonais Identificados',
-                    color='Contribuição',
-                    color_continuous_scale=['yellow', 'orange', 'red']
-                )
-                
-                fig_seasonal.update_layout(
-                    xaxis_title='Período Sazonal',
-                    yaxis_title='Contribuição (Amplitude)'
-                )
-                
-                st.plotly_chart(fig_seasonal, use_container_width=True)
-                
-            # Also add a Holt-Winters model for comparison
-            
-            # Define seasonal period based on granularity
+            # Convert to daily if weekly
             if granularity == "Semanal":
-                # For weekly data, use 4 (monthly seasonality) or 13 (quarterly seasonality)
-                if len(ts_data) >= 104:  # At least 2 years of data (104 weeks)
-                    seasonal_period = 52  # Yearly seasonality
-                elif len(ts_data) >= 8:  # At least 2 months of data (8 weeks)
-                    seasonal_period = 4   # Monthly seasonality
-                else:
-                    seasonal_period = 2   # Use minimal seasonality
-            else:
-                # For daily data, use 7 (weekly seasonality)
-                seasonal_period = 7
+                arima_daily_pp = arima_daily_pp / 7
             
-            # Fit Holt-Winters model for comparison
-            hw_model = ExponentialSmoothing(
-                ts_data,
-                seasonal_periods=seasonal_period,
-                trend='add',
-                seasonal='add',
-                use_boxcox=False,
-                initialization_method="estimated"
-            )
+            trend_label = "crescimento" if arima_daily_pp > 0 else "queda"
             
-            try:
-                hw_fit = hw_model.fit()
-                
-                # Generate HW forecast
-                hw_forecast = hw_fit.forecast(steps=forecast_periods)
-                
-                # Calculate HW metrics
-                hw_fitted = hw_fit.fittedvalues
-                hw_r2 = 1 - (((ts_data - hw_fitted) ** 2).sum() / ((ts_data - ts_data.mean()) ** 2).sum())
-                hw_mae = mean_absolute_error(ts_data, hw_fitted)
-                
-                # Create comparison metrics table
-                comparison_data = {
-                    "Métrica": ["R² (treino)", "MAE (treino)"],
-                    "Fourier+ARIMA": [f"{train_r2:.3f}", f"{train_mae:.3f}"],
-                    "Holt-Winters": [f"{hw_r2:.3f}", f"{hw_mae:.3f}"]
-                }
-                
-                comparison_df = pd.DataFrame(comparison_data)
-                
-                st.subheader("Comparação de Modelos")
-                st.dataframe(comparison_df, hide_index=True, use_container_width=True)
-                
-                # Create combined forecast plot
-                fig_compare = go.Figure()
-                
-                # Add original data
-                fig_compare.add_trace(go.Scatter(
-                    x=ts_data.index, 
-                    y=ts_data.values,
-                    mode='lines',
-                    name='Dados Originais',
-                    line=dict(color='blue')
-                ))
-                
-                # Add Fourier+ARIMA forecast
-                fig_compare.add_trace(go.Scatter(
-                    x=future_dates, 
-                    y=future_forecast,
-                    mode='lines',
-                    name='Previsão Fourier+ARIMA',
-                    line=dict(color='red', dash='dash')
-                ))
-                
-                # Add Holt-Winters forecast
-                fig_compare.add_trace(go.Scatter(
-                    x=future_dates, 
-                    y=hw_forecast.values,
-                    mode='lines',
-                    name='Previsão Holt-Winters',
-                    line=dict(color='green', dash='dash')
-                ))
-                
-                fig_compare.update_layout(
-                    title='Comparação das Previsões: Fourier+ARIMA vs. Holt-Winters',
-                    xaxis_title='Data',
-                    yaxis_title='cov% Globo',
-                    legend=dict(orientation="h", y=1.1)
-                )
-                
-                st.plotly_chart(fig_compare, use_container_width=True)
-                
-                # Calculate trend for insight generation
-                # Use the Fourier+ARIMA model for trend extraction
-                trend_direction = future_forecast[-1] - future_forecast[0]
-                trend_daily_pp = trend_direction / len(future_forecast)
-                
-                # Convert to daily if weekly
-                if granularity == "Semanal":
-                    trend_daily_pp = trend_daily_pp / 7
-                
-                trend_label = "crescimento" if trend_daily_pp > 0 else "queda"
-                
-                # Display key insights
-                st.success(f"""
-                **Resultados principais da análise temporal**:
-                - **Melhor modelo**: {"Fourier+ARIMA" if train_r2 > hw_r2 else "Holt-Winters"} (R² = {max(train_r2, hw_r2):.2f})
-                - **Tendência atual**: {trend_label.title()} ({trend_daily_pp:.4f} p.p./dia)
-                - **Principais períodos sazonais**: {", ".join([f"{p}" for p in list(periods_df['Período'])[:2]])}
-                """)
-                
-            except Exception as hw_error:
-                st.warning(f"Não foi possível comparar com Holt-Winters: {str(hw_error)}")
-                
-                # Still display insights from Fourier+ARIMA
-                trend_direction = future_forecast[-1] - future_forecast[0]
-                trend_daily_pp = trend_direction / len(future_forecast)
-                
-                # Convert to daily if weekly
-                if granularity == "Semanal":
-                    trend_daily_pp = trend_daily_pp / 7
-                
-                trend_label = "crescimento" if trend_daily_pp > 0 else "queda"
-                
-                st.success(f"""
-                **Resultados principais da análise temporal**:
-                - **Fourier+ARIMA**: R² = {train_r2:.2f}
-                - **Tendência atual**: {trend_label.title()} ({trend_daily_pp:.4f} p.p./dia)
-                - **Principais períodos sazonais**: {", ".join([f"{p}" for p in list(periods_df['Período'])[:2]])}
-                """)
-                
-        except Exception as e:
-            st.error(f"Erro na análise de Fourier + ARIMA: {str(e)}")
+            # Create plots
+            # Time series plot with model fit and forecast
+            fig_data = go.Figure()
             
-            # If there's an error, try a simpler approach
-            st.info("""
-            **Análise simplificada:**
-            
-            Encontramos um problema técnico. Vamos mostrar uma análise de tendência simples.
-            """)
-            
-            try:
-                # Simple linear trend analysis
-                ts_data_reset = ts_data.reset_index()
-                ts_data_reset['time_idx'] = range(len(ts_data_reset))
-                
-                X = sm.add_constant(ts_data_reset['time_idx'])
-                y = ts_data_reset['LINEAR_GLOBO_cov%']
-                
-                trend_model = sm.OLS(y, X).fit()
-                
-                # Get trend coefficient and calculate daily change
-                trend_coef = trend_model.params[1]
-                daily_trend = trend_coef if granularity == "Diário" else trend_coef / 7
-                trend_label = "crescimento" if daily_trend > 0 else "queda"
-                
-                # Calculate fitted values and R-squared
-                trend_values = trend_model.predict(X)
-                r_squared = trend_model.rsquared
-                
-                # Create forecast
-                forecast_periods = 7 if granularity == "Diário" else 4
-                last_idx = ts_data_reset['time_idx'].max()
-                
-                forecast_indices = list(range(last_idx + 1, last_idx + 1 + forecast_periods))
-                forecast_dates = [ts_data_reset['data_hora'].iloc[-1] + pd.Timedelta(days=i) 
-                                 for i in range(1, forecast_periods + 1)]
-                
-                forecast_X = sm.add_constant(forecast_indices)
-                forecast_values = trend_model.predict(forecast_X)
-                
-                # Plot trend and forecast
-                fig_trend = go.Figure()
-                
-                # Add original data
-                fig_trend.add_trace(go.Scatter(
-                    x=ts_data_reset['data_hora'], 
-                    y=ts_data_reset['LINEAR_GLOBO_cov%'],
-                    mode='markers+lines',
-                    name='Dados Originais',
-                    line=dict(color='blue')
-                ))
-                
-                # Add trend line
-                fig_trend.add_trace(go.Scatter(
-                    x=ts_data_reset['data_hora'], 
-                    y=trend_values,
-                    mode='lines',
-                    name='Tendência Linear',
-                    line=dict(color='green')
-                ))
-                
-                # Add forecast
-                fig_trend.add_trace(go.Scatter(
-                    x=forecast_dates, 
-                    y=forecast_values,
-                    mode='lines',
-                    name='Previsão',
-                    line=dict(color='red', dash='dash')
-                ))
-                
-                fig_trend.update_layout(
-                    title=f'Análise de Tendência Linear (R² = {r_squared:.2f})',
-                    xaxis_title='Data',
-                    yaxis_title='cov% Globo',
-                    legend=dict(orientation="h", y=1.1)
-                )
-                
-                st.plotly_chart(fig_trend, use_container_width=True)
-                
-                # Display key insights
-                st.success(f"""
-                **Resultados principais da análise de tendência**:
-                - **Granularidade**: {granularity} (R² = {r_squared:.2f})
-                - **Tendência atual**: {trend_label.title()} ({daily_trend:.4f} p.p./dia)
-                """)
-                
-                # Set variables for use in later sections
-                trend_daily_pp = daily_trend
-            except Exception as e_inner:
-                st.error(f"Erro na análise de tendência simplificada: {str(e_inner)}")
-    else:
-        st.warning("Dados insuficientes para análise de tendência e sazonalidade.")
-    
-    # 4. State-Space Model for Baseline Analysis
-    st.subheader("Análise de Nível Basal (Modelo de Espaço de Estados)")
-    
-    st.markdown("""
-    Esta análise identifica o "chão" da audiência da Globo - o nível mínimo sustentado mesmo em 
-    condições adversas. Este basal é estimado usando um Modelo de Espaço de Estados com Filtro
-    de Kalman, que considera a natureza dinâmica da audiência ao longo do tempo.
-    """)
-    
-    if "LINEAR_GLOBO_cov%" in selected_df.columns and len(selected_df) >= 14:
-        try:
-            # Prepare data for state-space model
-            ss_data = selected_df.set_index('data_hora')['LINEAR_GLOBO_cov%']
-            
-            # Fill any missing values
-            ss_data = ss_data.ffill().bfill()
-            
-            # Create a state-space model using UnobservedComponents
-            # We'll use a local linear trend model with stochastic level and trend
-            ss_model = UnobservedComponents(
-                ss_data,
-                level='local linear trend',  # Stochastic level and trend
-                stochastic_level=True,
-                stochastic_trend=True
-            )
-            
-            ss_fit = ss_model.fit(disp=False)
-            
-            # Extract the smoothed states
-            smoothed_states = ss_fit.smoothed_state
-            
-            # The first component is the level (latent state)
-            smoothed_level = smoothed_states[0]
-            
-            # The second component is the trend
-            smoothed_trend = smoothed_states[1]
-            
-            # Calculate baseline as the 10th percentile of the estimated level
-            # This captures the lower bound of normal operation
-            level_percentile = np.percentile(smoothed_level, 10)
-            
-            # For a more adaptive baseline, we can use a rolling window
-            rolling_window = min(30, len(smoothed_level) // 3)  # Use at most 30 days or 1/3 of data
-            
-            # Calculate a rolling 10th percentile
-            rolling_baseline = pd.Series(smoothed_level).rolling(
-                window=rolling_window, min_periods=3
-            ).quantile(0.1).values
-            
-            # Fill NaN values at the beginning with the first valid value
-            first_valid = next((i for i, x in enumerate(rolling_baseline) if not np.isnan(x)), None)
-            if first_valid is not None:
-                rolling_baseline[:first_valid] = rolling_baseline[first_valid]
-            
-            # Check proximity to baseline
-            current_level = smoothed_level[-1]
-            current_baseline = rolling_baseline[-1]
-            
-            proximity_threshold = 0.2  # 20% above baseline
-            proximity_ratio = (current_level - current_baseline) / current_baseline
-            
-            # Calculate the trend in the baseline
-            if len(rolling_baseline) >= 2:
-                baseline_trend = (rolling_baseline[-1] - rolling_baseline[0]) / len(rolling_baseline)
-                
-                # Convert to daily trend if weekly
-                if granularity == "Semanal":
-                    baseline_trend = baseline_trend / 7
-                
-                baseline_trend_label = "crescimento" if baseline_trend > 0 else "queda"
-            else:
-                baseline_trend = 0
-                baseline_trend_label = "estável"
-            
-            # Plot the results
-            fig_ss = go.Figure()
-            
-            # Add original data
-            fig_ss.add_trace(go.Scatter(
-                x=ss_data.index, 
-                y=ss_data.values,
+            # Original data
+            fig_data.add_trace(go.Scatter(
+                x=model_data.index, 
+                y=model_data['y'].values,
                 mode='lines',
-                name='cov% Globo',
+                name='Dados Originais',
                 line=dict(color='blue')
             ))
             
-            # Add smoothed level
-            fig_ss.add_trace(go.Scatter(
-                x=ss_data.index, 
-                y=smoothed_level,
+            # Fitted values
+            fig_data.add_trace(go.Scatter(
+                x=predictions.index, 
+                y=predictions.values,
+                mode='lines',
+                name='Modelo Ajustado',
+                line=dict(color='green')
+            ))
+            
+            # Forecast
+            fig_data.add_trace(go.Scatter(
+                x=forecast.index, 
+                y=forecast.values,
+                mode='lines',
+                name='Previsão',
+                line=dict(color='red', dash='dash')
+            ))
+            
+            fig_data.update_layout(
+                title=f'ARIMA (R² = {arima_r_squared:.2f}, MAE = {arima_mae:.2f})',
+                xaxis_title='Data',
+                yaxis_title='cov% Globo',
+                legend=dict(orientation="h", y=1.1)
+            )
+            
+            st.plotly_chart(fig_data, use_container_width=True)
+            
+            # Display summary
+            st.success(f"""
+            **Resultados principais da análise ARIMA**:
+            - **Performance**: R² = {arima_r_squared:.2f}, MAE = {arima_mae:.2f}
+            - **Tendência**: {trend_label.title()} ({arima_daily_pp:.4f} p.p./dia)
+            """)
+            
+            # Save results for benchmarking
+            arima_results = {
+                'r2': arima_r_squared,
+                'mae': arima_mae,
+                'trend': arima_daily_pp
+            }
+            
+        except Exception as e:
+            st.error(f"Erro na análise ARIMA: {str(e)}")
+            
+            # Initialize an empty dict for results
+            arima_results = {}
+
+        # ================= SECTION 2: BASAL CALCULATION USING STATE-SPACE MODEL =================
+        st.subheader("2️⃣ Cálculo do Basal → State-Space Model")
+        st.markdown("""
+        Esta análise identifica o "chão" da audiência da Globo - o nível mínimo sustentado mesmo em 
+        condições adversas. Este basal é estimado usando um modelo de espaço de estados (State-Space Model)
+        que permite capturar o nível latente da audiência.
+        """)
+        
+        try:
+            # Definimos um modelo local level mais simples para o State-Space Model
+            # Este é mais estável e menos propenso a problemas dimensionais
+            model_type = 'local level'
+            
+            # Ajustamos o modelo
+            state_space_model = sm.tsa.UnobservedComponents(
+                ts_data, 
+                model_type,
+                irregular=True  # Permite variância nos erros
+            )
+            
+            fit_ssm = state_space_model.fit(disp=False)
+            
+            # Extrair o estado suavizado (nível da série)
+            # Garantindo que acessamos as dimensões corretamente
+            smoothed_states = fit_ssm.smoothed_state
+            
+            # Verificar se smoothed_states é um array 1D ou 2D
+            if smoothed_states.ndim == 1:  # É um array 1D
+                smoothed_level = smoothed_states
+            else:  # É um array 2D
+                smoothed_level = smoothed_states[0, :]  # Primeiro componente é o nível
+            
+            # Obter variância do estado para calcular intervalos
+            state_cov = fit_ssm.smoothed_state_cov
+            
+            # Lidar com diferentes dimensões de state_cov
+            if state_cov.ndim == 2:  # Formato simples para Local Level
+                state_var = np.diagonal(state_cov)
+            else:  # Formato mais complexo com múltiplos estados
+                state_var = np.diagonal(state_cov[0, :, :])
+            
+            # Calcular o percentil 10% para o basal (simulando a distribuição)
+            level_percentiles = np.zeros(len(smoothed_level))
+            
+            for i in range(len(smoothed_level)):
+                # Verificar se a variância em i existe
+                variance = state_var[i] if i < len(state_var) else state_var[-1]
+                
+                # Simular a distribuição Gaussiana do estado
+                state_dist = np.random.normal(
+                    loc=smoothed_level[i],
+                    scale=np.sqrt(variance),
+                    size=1000
+                )
+                # Calcular o percentil 10%
+                level_percentiles[i] = np.percentile(state_dist, 10)
+            
+            # Criar DataFrame com resultados
+            ssm_results = pd.DataFrame({
+                'data_hora': ts_data.index,
+                'cov_original': ts_data.values,
+                'nivel_latente': smoothed_level,
+                'basal_kalman': level_percentiles
+            })
+            
+            # Calcular basal atual e tendência
+            current_basal = level_percentiles[-1]
+            
+            # Calcular tendência (mudança diária)
+            basal_trend = (level_percentiles[-1] - level_percentiles[0]) / len(level_percentiles)
+            if granularity == "Semanal":
+                basal_trend = basal_trend / 7  # Converter para diário se semanal
+            
+            basal_trend_label = "crescimento" if basal_trend > 0 else "queda"
+            
+            # Criar tabela de resultados
+            basal_data = [
+                {
+                    "Método": "State-Space Model",
+                    "Basal Atual (cov%)": f"{current_basal:.2f}%",
+                    "Tendência do Basal (p.p./dia)": f"{basal_trend:.4f}"
+                }
+            ]
+            
+            basal_df = pd.DataFrame(basal_data)
+            st.dataframe(basal_df, hide_index=True, use_container_width=True)
+            
+            # Criar gráfico
+            fig_ssm = go.Figure()
+            
+            # Adicionar dados originais
+            fig_ssm.add_trace(go.Scatter(
+                x=ssm_results['data_hora'],
+                y=ssm_results['cov_original'],
+                mode='lines',
+                name='cov% Original',
+                line=dict(color='blue')
+            ))
+            
+            # Adicionar nível latente
+            fig_ssm.add_trace(go.Scatter(
+                x=ssm_results['data_hora'],
+                y=ssm_results['nivel_latente'],
                 mode='lines',
                 name='Nível Latente',
                 line=dict(color='green')
             ))
             
-            # Add rolling baseline
-            fig_ss.add_trace(go.Scatter(
-                x=ss_data.index, 
-                y=rolling_baseline,
+            # Adicionar basal (percentil 10%)
+            fig_ssm.add_trace(go.Scatter(
+                x=ssm_results['data_hora'],
+                y=ssm_results['basal_kalman'],
                 mode='lines',
-                name='Basal Adaptativo (10%)',
+                name='Basal (Percentil 10%)',
                 line=dict(color='red', dash='dash')
             ))
             
-            fig_ss.update_layout(
-                title=f'Modelo de Espaço de Estados - Nível Basal Adaptativo',
+            fig_ssm.update_layout(
+                title='Análise de Basal com Modelo de Espaço de Estados',
                 xaxis_title='Data',
                 yaxis_title='cov%',
                 legend=dict(orientation="h", y=1.1)
             )
             
-            st.plotly_chart(fig_ss, use_container_width=True)
+            st.plotly_chart(fig_ssm, use_container_width=True)
             
-            # Display baseline metrics
-            baseline_data = [{
-                "Granularidade": granularity,
-                "Basal Atual (cov%)": f"{current_baseline:.2f}%",
-                "Tendência do Basal (p.p./dia)": f"{baseline_trend:.5f}",
-                "Nível Atual/Basal": f"{proximity_ratio * 100:.1f}%"
-            }]
+            # Verificar se valor atual está próximo do basal
+            current_cov = ts_data.iloc[-1]
+            proximity_threshold = 0.2  # 20% acima do basal
+            proximity_ratio = (current_cov - current_basal) / current_basal
             
-            baseline_df = pd.DataFrame(baseline_data)
-            st.dataframe(baseline_df, hide_index=True, use_container_width=True)
-            
-            # Generate alerts
             if proximity_ratio < proximity_threshold:
                 st.warning(f"""
-                ⚠️ **Alerta**: O cov% atual ({current_level:.2f}%) está muito próximo do basal estimado ({current_baseline:.2f}%).
+                ⚠️ **Alerta**: O cov% atual ({current_cov:.2f}%) está muito próximo do basal estimado ({current_basal:.2f}%).
                 Isso indica que a audiência está operando próxima do seu nível mínimo histórico.
                 """)
             
-            if baseline_trend < 0:
+            if basal_trend < 0:
                 st.warning(f"""
-                ⚠️ **Alerta**: A tendência do basal é de queda ({baseline_trend:.5f} p.p./dia),
+                ⚠️ **Alerta**: A tendência do basal é de queda ({basal_trend:.4f} p.p./dia),
                 sugerindo uma erosão gradual da audiência mínima ao longo do tempo.
                 """)
-                
-            # Calculate projected time to reach baseline if current trend continues
-            if 'trend_daily_pp' in locals() and trend_daily_pp < 0:
-                days_to_baseline = (current_level - current_baseline) / abs(trend_daily_pp)
-                if days_to_baseline < 30:  # Only alert if within a month
-                    st.warning(f"""
-                    ⚠️ **Alerta de Projeção**: Se a tendência atual continuar, a audiência atingirá o nível basal em 
-                    aproximadamente {int(days_to_baseline)} dias.
-                    """)
+            
+            # Salvar resultados
+            basal_results = {
+                'basal': current_basal,
+                'basal_trend': basal_trend
+            }
             
         except Exception as e:
-            st.error(f"Erro na análise de nível basal: {str(e)}")
+            st.error(f"Erro na análise de basal com State-Space Model: {str(e)}")
             
-            # If there's an error, fall back to the original quantile regression approach
-            st.info("""
-            **Análise simplificada:**
-            
-            Devido a limitações técnicas, estamos usando Regressão Quantílica para estimar o basal.
-            """)
+            # Alternativa com Regressão Quantílica em caso de erro
+            st.info("Usando Regressão Quantílica como método alternativo...")
             
             try:
-                # Prepare data for quantile regression
+                # Preparar dados para regressão quantílica
                 selected_df_qr = selected_df.copy()
-                
-                # Add time trend variable
                 selected_df_qr['time_index'] = range(len(selected_df_qr))
                 
                 # Prepare data for statsmodels
@@ -766,9 +415,9 @@ def analise_tv_linear(df):
                 qr_model = QuantReg(y, X)
                 qr_result = qr_model.fit(q=0.1)
                 
-                # Get coefficient for time trend (per period change)
-                intercept = qr_result.params.iloc[0]  # Constant
-                time_coef = qr_result.params.iloc[1]  # time_index coefficient
+                # Get coefficient for time trend
+                intercept = qr_result.params.iloc[0]
+                time_coef = qr_result.params.iloc[1]
                 
                 # Calculate baseline for current period
                 current_baseline = intercept + time_coef * selected_df_qr['time_index'].iloc[-1]
@@ -779,10 +428,10 @@ def analise_tv_linear(df):
                 else:
                     daily_trend = time_coef
                 
-                # Create baseline data for each granularity
+                # Create baseline data
                 baseline_data = [
                     {
-                        "Granularidade": granularity,
+                        "Método": "Regressão Quantílica (alternativa)",
                         "Basal Atual (cov%)": f"{current_baseline:.2f}%",
                         "Tendência do Basal (p.p./dia)": f"{daily_trend:.4f}"
                     }
@@ -791,149 +440,224 @@ def analise_tv_linear(df):
                 baseline_df = pd.DataFrame(baseline_data)
                 st.dataframe(baseline_df, hide_index=True, use_container_width=True)
                 
-                # Plot with baseline
-                fig = go.Figure()
-                
-                # Add original data
-                fig.add_trace(go.Scatter(
-                    x=selected_df_qr['data_hora'], 
-                    y=selected_df_qr['LINEAR_GLOBO_cov%'],
-                    mode='lines',
-                    name='cov% Globo',
-                    line=dict(color='blue')
-                ))
-                
-                # Add baseline
-                baseline_values = intercept + time_coef * selected_df_qr['time_index']
-                fig.add_trace(go.Scatter(
-                    x=selected_df_qr['data_hora'], 
-                    y=baseline_values,
-                    mode='lines',
-                    name='Nível Basal (10%)',
-                    line=dict(color='red', dash='dash')
-                ))
-                
-                fig.update_layout(
-                    title=f'cov% Globo com Nível Basal Estimado - {granularity}',
-                    xaxis_title='Data',
-                    yaxis_title='cov%',
-                    legend=dict(orientation="h", y=1.1)
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Check if current value is close to baseline
-                current_cov = selected_df_qr['LINEAR_GLOBO_cov%'].iloc[-1]
-                current_baseline_value = baseline_values.iloc[-1]
-                
-                proximity_threshold = 0.2  # 20% above baseline
-                proximity_ratio = (current_cov - current_baseline_value) / current_baseline_value
-                
-                if proximity_ratio < proximity_threshold:
-                    st.warning(f"""
-                    ⚠️ **Alerta**: O cov% atual ({current_cov:.2f}%) está muito próximo do basal estimado ({current_baseline_value:.2f}%).
-                    Isso indica que a audiência está operando próxima do seu nível mínimo histórico.
-                    """)
-                
-                if daily_trend < 0:
-                    st.warning(f"""
-                    ⚠️ **Alerta**: A tendência do basal é de queda ({daily_trend:.4f} p.p./dia),
-                    sugerindo uma erosão gradual da audiência mínima ao longo do tempo.
-                    """)
+                # Salvar resultados do método alternativo
+                basal_results = {
+                    'basal': current_baseline,
+                    'basal_trend': daily_trend
+                }
                 
             except Exception as e_inner:
-                st.error(f"Erro na análise simplificada de basal: {str(e_inner)}")
-    else:
-        st.warning("Dados insuficientes para análise de nível basal.")
-    
-    # 5. Final Conclusions
-    st.subheader("Conclusões Finais - TV Globo")
-    
-    if "LINEAR_GLOBO_cov%" in selected_df.columns:
+                st.error(f"Erro na análise alternativa: {str(e_inner)}")
+                basal_results = {}
+
+        # ================= SECTION 3: BENCHMARKING AND VALIDATION =================
+        st.subheader("3️⃣ Benchmarking e Validação")
+        st.markdown("""
+        Esta seção compara o desempenho do modelo ARIMA com o modelo de referência Holt-Winters,
+        permitindo verificar qual abordagem captura melhor os padrões da série temporal.
+        """)
+        
+        try:
+            # Try to fit Holt-Winters model
+            holt_winters_model = ExponentialSmoothing(
+                ts_data,
+                seasonal_periods=seasonal_period,
+                trend='add',
+                seasonal='add',
+                initialization_method="estimated"
+            )
+            
+            fit_hw = holt_winters_model.fit()
+            
+            # Calculate metrics
+            hw_predictions = fit_hw.fittedvalues
+            hw_r_squared = 1 - ((ts_data - hw_predictions) ** 2).sum() / ((ts_data - ts_data.mean()) ** 2).sum()
+            hw_mae = mean_absolute_error(ts_data, hw_predictions)
+            
+            # Extract trend direction
+            hw_trend_start = hw_predictions.iloc[0]
+            hw_trend_end = hw_predictions.iloc[-1]
+            hw_trend_direction = hw_trend_end - hw_trend_start
+            hw_daily_pp = hw_trend_direction / len(hw_predictions)
+            
+            # Convert to daily if weekly
+            if granularity == "Semanal":
+                hw_daily_pp = hw_daily_pp / 7
+                
+            # Generate Holt-Winters forecast
+            forecast_periods = 7 if granularity == "Diário" else 4
+            hw_forecast = fit_hw.forecast(forecast_periods)
+            
+            # Create comparison table
+            comparison_data = [{
+                "Modelo": "Holt-Winters",
+                "R²": f"{hw_r_squared:.4f}",
+                "MAE": f"{hw_mae:.4f}",
+                "Tendência (p.p./dia)": f"{hw_daily_pp:.4f}"
+            }]
+            
+            # Add ARIMA if available
+            if 'r2' in arima_results:
+                comparison_data.append({
+                    "Modelo": "ARIMA",
+                    "R²": f"{arima_results['r2']:.4f}",
+                    "MAE": f"{arima_results['mae']:.4f}",
+                    "Tendência (p.p./dia)": f"{arima_results['trend']:.4f}"
+                })
+            
+            comparison_df = pd.DataFrame(comparison_data)
+            st.dataframe(comparison_df, hide_index=True, use_container_width=True)
+            
+            # Plot comparison
+            fig_comp = go.Figure()
+            
+            # Original data
+            fig_comp.add_trace(go.Scatter(
+                x=ts_data.index,
+                y=ts_data.values,
+                mode='lines',
+                name='Dados Originais',
+                line=dict(color='black')
+            ))
+            
+            # Holt-Winters predictions
+            fig_comp.add_trace(go.Scatter(
+                x=hw_predictions.index,
+                y=hw_predictions.values,
+                mode='lines',
+                name='Holt-Winters',
+                line=dict(color='blue')
+            ))
+            
+            # Holt-Winters forecast
+            fig_comp.add_trace(go.Scatter(
+                x=hw_forecast.index,
+                y=hw_forecast.values,
+                mode='lines',
+                name='Forecast HW',
+                line=dict(color='blue', dash='dash')
+            ))
+            
+            # Add ARIMA if available
+            if 'r2' in arima_results and 'predictions' in locals() and 'forecast' in locals():
+                fig_comp.add_trace(go.Scatter(
+                    x=predictions.index,
+                    y=predictions.values,
+                    mode='lines',
+                    name='ARIMA',
+                    line=dict(color='red')
+                ))
+                
+                fig_comp.add_trace(go.Scatter(
+                    x=forecast.index,
+                    y=forecast.values,
+                    mode='lines',
+                    name='Forecast ARIMA',
+                    line=dict(color='red', dash='dash')
+                ))
+            
+            fig_comp.update_layout(
+                title='Comparação entre Modelos',
+                xaxis_title='Data',
+                yaxis_title='cov%',
+                legend=dict(orientation="h", y=1.1)
+            )
+            
+            st.plotly_chart(fig_comp, use_container_width=True)
+            
+            # Determine winner
+            if 'r2' in arima_results:
+                if arima_results['r2'] > hw_r_squared:
+                    winner_r2 = "ARIMA"
+                    r2_diff = arima_results['r2'] - hw_r_squared
+                else:
+                    winner_r2 = "Holt-Winters"
+                    r2_diff = hw_r_squared - arima_results['r2']
+                
+                if arima_results['mae'] < hw_mae:
+                    winner_mae = "ARIMA"
+                    mae_diff = hw_mae - arima_results['mae']
+                else:
+                    winner_mae = "Holt-Winters"
+                    mae_diff = arima_results['mae'] - hw_mae
+                
+                st.success(f"""
+                **Resultado da comparação**:
+                - **R²**: {winner_r2} vence com diferença de {r2_diff:.4f}
+                - **MAE**: {winner_mae} vence com diferença de {mae_diff:.4f}
+                """)
+            
+            # Save Holt-Winters results
+            holt_winters_results = {
+                'r2': hw_r_squared,
+                'mae': hw_mae,
+                'trend': hw_daily_pp
+            }
+            
+        except Exception as e:
+            st.error(f"Erro na análise de benchmarking: {str(e)}")
+            holt_winters_results = {}
+
+        # ================= FINAL CONCLUSION =================
+        st.subheader("Conclusões")
+        
         # Calculate key metrics
         avg_cov = selected_df['LINEAR_GLOBO_cov%'].mean()
         
-        # Get R² from the trend analysis if available
-        r_squared_value = train_r2 if 'train_r2' in locals() else None
-        if r_squared_value is None and 'r_squared' in locals():
-            r_squared_value = r_squared
+        # Determine best model based on benchmarking
+        best_model = None
+        if 'r2' in arima_results and 'r2' in holt_winters_results:
+            if arima_results['r2'] > holt_winters_results['r2']:
+                best_model = "ARIMA"
+                best_r2 = arima_results['r2']
+                best_trend = arima_results['trend']
+            else:
+                best_model = "Holt-Winters"
+                best_r2 = holt_winters_results['r2']
+                best_trend = holt_winters_results['trend']
+        elif 'r2' in arima_results:
+            best_model = "ARIMA"
+            best_r2 = arima_results['r2']
+            best_trend = arima_results['trend']
+        elif 'r2' in holt_winters_results:
+            best_model = "Holt-Winters"
+            best_r2 = holt_winters_results['r2']
+            best_trend = holt_winters_results['trend']
         
-        # Get trend direction and value if available
-        trend_daily_pp_value = trend_daily_pp if 'trend_daily_pp' in locals() else None
+        # Get basal value
+        basal_value = basal_results.get('basal', None)
+        basal_trend = basal_results.get('basal_trend', None)
         
-        # Get baseline value if available
-        baseline_value = None
-        if 'current_baseline' in locals():
-            baseline_value = current_baseline
-        elif 'current_baseline_value' in locals():
-            baseline_value = current_baseline_value
-            
-        # Create metrics columns
-        col1, col2 = st.columns(2)
+        # Create summary metrics
+        col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.metric("cov% Médio Diário", f"{avg_cov:.2f}%")
-            if r_squared_value is not None:
-                st.metric("Qualidade do Modelo", f"R² = {r_squared_value:.2f}")
-            
+            st.metric("cov% Médio", f"{avg_cov:.2f}%")
+        
         with col2:
-            if trend_daily_pp_value is not None:
-                trend_label = "Crescimento" if trend_daily_pp_value > 0 else "Queda"
-                st.metric("Tendência", f"{trend_label} ({trend_daily_pp_value:.4f} p.p./dia)")
-            
-            if baseline_value is not None:
-                st.metric("Basal Diário", f"{baseline_value:.2f}%")
-    
-    st.markdown("""
-    ## Principais Insights
-    
-    - **Poder preditivo aprimorado:** A combinação de Transformada de Fourier com ARIMA permite identificar
-    os padrões sazonais mais relevantes na audiência da Globo, melhorando a precisão das previsões.
-    
-    - **Análise de sazonalidade avançada:** Os componentes de Fourier revelam padrões cíclicos específicos
-    na audiência, permitindo diferenciar entre efeitos diários, semanais e mensais.
-    
-    - **Nível basal adaptativo:** O modelo de espaço de estados com filtro de Kalman detecta o piso dinâmico
-    da audiência, adaptando-se às mudanças estruturais do mercado ao longo do tempo.
-    
-    - **Alertas preditivos:** O sistema identifica proativamente quando a audiência está operando próxima
-    ao nível basal ou quando há tendências consistentes de queda, possibilitando intervenções antecipadas.
-    
-    Estes insights fornecem uma visão abrangente e tecnicamente robusta da performance histórica da Globo, 
-    permitindo decisões estratégicas melhor fundamentadas para manter e expandir a audiência.
-    """)
-    
-    # 6. Notes and Documentation
-    st.subheader("Notas Metodológicas")
-    
-    with st.expander("Informações sobre metodologia"):
+            if best_model:
+                trend_label = "Crescimento" if best_trend > 0 else "Queda"
+                st.metric("Tendência Geral", f"{trend_label} ({best_trend:.4f} p.p./dia)")
+        
+        with col3:
+            if basal_value:
+                basal_trend_label = "Crescimento" if basal_trend > 0 else "Queda"
+                st.metric("Basal (10%)", f"{basal_value:.2f}% ({basal_trend_label})")
+        
         st.markdown("""
-        ### Fonte dos Dados
+        ## Principais Insights
         
-        Os dados de audiência de TV Linear são coletados pela Kantar IBOPE Media.
+        - **Modelo com melhor desempenho:** O benchmark indica qual abordagem (ARIMA ou Holt-Winters)
+        captura melhor os padrões da audiência, permitindo previsões mais precisas.
         
-        ### Análise de Tendência e Sazonalidade (Fourier + ARIMA)
+        - **Componentes sazonais:** A análise de séries temporais identifica padrões cíclicos importantes
+        que influenciam a audiência, revelando periodicidades diárias, semanais ou mensais.
         
-        Esta abordagem combina duas técnicas poderosas:
+        - **Nível basal:** A regressão quantílica revela o piso de audiência histórico,
+        permitindo identificar quando a audiência está operando próxima ao seu mínimo sustentável.
         
-        1. **Transformada de Fourier** - Decompõe a série temporal em componentes de frequência, identificando 
-        os ciclos mais importantes na audiência (diários, semanais, mensais).
-        
-        2. **Modelo ARIMA com Features Exógenas** - Utiliza os componentes de Fourier como variáveis explicativas 
-        em um modelo que captura tendência e correlações temporais.
-        
-        Esta combinação é mais flexível que o modelo Holt-Winters tradicional, permitindo capturar múltiplos 
-        padrões sazonais simultaneamente e se adaptando melhor às características específicas dos dados.
-        
-        ### Cálculo do Basal de Audiência (Modelo de Espaço de Estados)
-        
-        O nível basal é estimado utilizando um **Modelo de Espaço de Estados com Filtro de Kalman**, que:
-        
-        1. Representa a audiência como um processo dinâmico com componentes latentes (não observáveis).
-        2. Estima o nível subjacente da audiência, filtrando flutuações de curto prazo.
-        3. Calcula o basal como o percentil 10% do nível estimado, usando uma janela móvel para adaptação.
-        4. Atualiza continuamente as estimativas conforme novos dados são recebidos.
-        
-        Esta abordagem é superior à regressão quantílica por considerar a natureza dinâmica do "piso" da audiência, 
-        que pode mudar gradualmente conforme o mercado e os hábitos de consumo evoluem.
+        - **Alertas automáticos:** Os indicadores mostram quando há tendências preocupantes,
+        como queda consistente do basal ou aproximação ao nível mínimo histórico.
         """)
+    else:
+        st.warning("Dados insuficientes para análise completa. São necessários pelo menos 14 registros com a métrica LINEAR_GLOBO_cov%.")

@@ -8,10 +8,11 @@ import statsmodels.api as sm
 
 def analise_externos(df):
     """
-        Analyzes external factors' impact on TV Linear data, including economic indicators,
-        specific events, and social metrics."
-        Args:
-        df (DataFrame): Processed dataframe with EXTERNO_ and LINEAR_ prefixed columns
+    Analyzes external factors' impact on TV Linear data, including economic indicators,
+    specific events, and social metrics.
+    
+    Args:
+        df (DataFrame): Processed dataframe with EXTERNO_* prefixed columns
     """
 
     st.header("📊 Fatores Externos - Impacto na Audiência")
@@ -28,7 +29,6 @@ def analise_externos(df):
         df['data_hora'] = pd.to_datetime(df['data_hora'])
 
     # Create copies of the dataframe for each granularity
-
     # Use original dataframe for hourly analysis
     df_hourly = df.copy()
 
@@ -58,13 +58,15 @@ def analise_externos(df):
     ### Análise de Fatores Externos
 
     Esta análise explora como fatores externos impactam a audiência da TV Linear da Globo. 
-    Investigamos três categorias principais:
+    Investigamos cinco categorias principais:
 
     1. **Indicadores Econômicos**: Como inflação, desemprego e outros índices econômicos se correlacionam com o comportamento da audiência
-    2. **Eventos Específicos**: O impacto de eventos como competições esportivas, lançamentos de programas concorrentes, etc.
-    3. **Volume Social**: Como o volume de conversas nas redes sociais se relaciona com a audiência TV
+    2. **Programas Recorrentes**: Analisamos como programas recorrentes (novelas, reality shows, futebol) influenciam a audiência
+    3. **Gêneros de Programação**: Como diferentes gêneros televisivos impactam a audiência
+    4. **Eventos Isolados**: O impacto de eventos pontuais como notícias importantes, lançamentos, etc.
+    5. **Volume Social**: Como o volume de conversas nas redes sociais se relaciona com a audiência TV
 
-    Estas análises ajudam a contextualizar o desempenho da TV Linear dentro do ambiente mais amplo em que opera.
+    Estas análises ajudam a contextualizar o desempenho da TV Linear dentro do ambiente competitivo.
 
     **Dica**: A análise por hora é especialmente útil para entender o impacto de eventos específicos que ocorrem em horários determinados, como jogos de futebol ou programas de TV concorrentes.
     """)
@@ -83,106 +85,19 @@ def analise_externos(df):
     else:  # "Horário"
         selected_df = df_hourly
 
-    # Check which external data columns are available
-    economic_cols = [col for col in selected_df.columns if col in [
-        'EXTERNO_dolar', 'EXTERNO_unemployment_rate', 'EXTERNO_inflation_ipca', 
-        'EXTERNO_selic_rate', 'EXTERNO_indice_cond_economicas'
-    ]]
-
-    event_cols = [col for col in selected_df.columns if col in [
-        'EXTERNO_FUTEBOL_CONCORRENTE_ON', 'EXTERNO_OLIMPIADAS_24',
-        'EXTERNO_SBT_LANCA_PROGRAMA_VIRGINIA', 'EXTERNO_NOTICIA_MORTE_SILVIO_SANTOS',
-        'EXTERNO_NETFLIX_LUTA_LOGAN_MIKE'
-    ]]
-
-    social_cols = [col for col in selected_df.columns if col in [
-        'EXTERNO_quantidade_tweets'
-    ]]
-
+    # Identify the TV column to use (audience metric)
     tv_col = 'LINEAR_GLOBO_cov%' if 'LINEAR_GLOBO_cov%' in selected_df.columns else None
 
-    # Calculate overall correlation metrics for each category
-    st.subheader("Índice de Correlação por Categoria")
-
-    st.markdown("""
-    Os índices abaixo mostram a correlação média de cada categoria de fatores externos com a audiência da TV Linear (cov%).
-    Valores mais próximos de 1.0 indicam maior poder explicativo sobre a audiência.
-    """)
-
-    col1, col2, col3 = st.columns(3)
-
-    # Economic indicators correlation
-    eco_corr = 0
-    if economic_cols and tv_col:
-        # Filter data where both economic indicators and tv_col have valid values
-        valid_eco_data = selected_df.dropna(subset=economic_cols + [tv_col])
-        
-        if not valid_eco_data.empty:
-            eco_corrs = []
-            for col in economic_cols:
-                # Check if column has any non-missing values
-                if not valid_eco_data[col].isna().all():
-                    corr = abs(valid_eco_data[col].corr(valid_eco_data[tv_col]))
-                    if not pd.isna(corr):  # Only include valid correlations
-                        eco_corrs.append(corr)
-            
-            if eco_corrs:
-                eco_corr = sum(eco_corrs) / len(eco_corrs)
-
-    with col1:
-        st.metric(
-            "Indicadores Econômicos",
-            f"{eco_corr:.2f}",
-            help="Correlação média dos indicadores econômicos com a audiência (cov%)"
-        )
-
-    # Events correlation
-    event_corr = 0
-    if event_cols and tv_col:
-        # Filter data where both events and tv_col have valid values
-        valid_events_data = selected_df.dropna(subset=event_cols + [tv_col])
-        
-        if not valid_events_data.empty:
-            event_corrs = []
-            for col in event_cols:
-                # Check if column has any variation (not all zeros or ones)
-                if valid_events_data[col].std() > 0:
-                    corr = abs(valid_events_data[col].corr(valid_events_data[tv_col]))
-                    if not pd.isna(corr):  # Only include valid correlations
-                        event_corrs.append(corr)
-            
-            if event_corrs:
-                event_corr = sum(event_corrs) / len(event_corrs)
-
-    with col2:
-        st.metric(
-            "Eventos",
-            f"{event_corr:.2f}",
-            help="Correlação média dos eventos externos com a audiência (cov%)"
-        )
-
-    # Social volume correlation
-    social_corr = 0
-    if 'EXTERNO_quantidade_tweets' in selected_df.columns and tv_col:
-        # Filter data where both tweets and tv_col have valid values
-        valid_social_data = selected_df.dropna(subset=['EXTERNO_quantidade_tweets', tv_col])
-        
-        if not valid_social_data.empty and valid_social_data['EXTERNO_quantidade_tweets'].std() > 0:
-            social_corr = abs(valid_social_data['EXTERNO_quantidade_tweets'].corr(valid_social_data[tv_col]))
-            if pd.isna(social_corr):  # Handle NaN correlation
-                social_corr = 0
-
-    with col3:
-        st.metric(
-            "Volume Social",
-            f"{social_corr:.2f}",
-            help="Correlação do volume de tweets com a audiência (cov%)"
-        )
+    if tv_col is None:
+        st.error("Não foi possível encontrar a coluna 'LINEAR_GLOBO_cov%' no conjunto de dados.")
+        return
 
     # Create tabs for different categories of analysis
-    tabs = st.tabs(["Indicadores Econômicos", "Eventos", "Volume Social"])
+    tabs = st.tabs(["Indicadores Econômicos", "Programas Recorrentes", "Gêneros de Programação", "Eventos Isolados", "Volume Social", "Resumo"])
 
-    # 3. Economic Indicators Analysis Tab
+    #######################################
+    # 3. Economic Indicators Analysis Tab #
+    #######################################
     with tabs[0]:
         st.subheader("Análise de Indicadores Econômicos")
         
@@ -194,6 +109,9 @@ def analise_externos(df):
         O gráfico abaixo mostra a evolução dos principais indicadores econômicos normalizados comparados
         com a evolução da audiência TV Linear da Globo.
         """)
+        
+        # Find economic indicator columns based on new naming pattern
+        economic_cols = [col for col in selected_df.columns if col.startswith('EXTERNO_ECONOMICO_')]
         
         if economic_cols and tv_col:
             # Filter data where both economic indicators and tv_col have valid values
@@ -208,7 +126,7 @@ def analise_externos(df):
                     go.Scatter(
                         x=valid_eco_data['data_hora'],
                         y=valid_eco_data[tv_col],
-                        name='Audiência TV (cov%)',
+                        name='Audiência TV Globo (cov%)',
                         line=dict(color='rgb(31, 119, 180)', width=3)
                     ),
                     secondary_y=False
@@ -228,7 +146,7 @@ def analise_externos(df):
                             normalized = (valid_eco_data[col] - min_val) / (max_val - min_val) * valid_eco_data[tv_col].max()
                             
                             # Clean up column name for display
-                            display_name = col.replace('EXTERNO_', '').replace('_', ' ').title()
+                            display_name = col.replace('EXTERNO_ECONOMICO_', '').replace('_', ' ').title()
                             
                             fig.add_trace(
                                 go.Scatter(
@@ -244,7 +162,7 @@ def analise_externos(df):
                 fig.update_layout(
                     title=f'Evolução da Audiência TV vs. Indicadores Econômicos ({granularity})',
                     xaxis_title='Data',
-                    yaxis_title='Audiência TV (cov%)',
+                    yaxis_title='Audiência TV Globo (cov%)',
                     yaxis2_title='Indicadores (Normalizados)',
                     legend_title='Métricas',
                     hovermode="x unified"
@@ -274,7 +192,7 @@ def analise_externos(df):
                     eco_audience_corr = corr_matrix.loc[economic_cols, audience_metrics]
                     
                     # Create a clean correlation matrix for display
-                    clean_rows = [col.replace('EXTERNO_', '').replace('_', ' ').title() for col in eco_audience_corr.index]
+                    clean_rows = [col.replace('EXTERNO_ECONOMICO_', '').replace('_', ' ').title() for col in eco_audience_corr.index]
                     clean_cols = [col.replace('LINEAR_GLOBO_', '').replace('%', ' %') for col in eco_audience_corr.columns]
                     
                     clean_corr = pd.DataFrame(
@@ -289,7 +207,7 @@ def analise_externos(df):
                         text_auto=True,
                         aspect="auto",
                         color_continuous_scale=["red", "white", "green"],
-                        labels=dict(x="Métrica de Audiência", y="Indicador Econômico", color="Correlação"),
+                        labels=dict(x="Métrica de Audiência Globo", y="Indicador Econômico", color="Correlação"),
                         title="Correlação entre Indicadores Econômicos e Métricas de Audiência"
                     )
                     
@@ -307,273 +225,858 @@ def analise_externos(df):
                     if not strongest_positive.empty:
                         pos_val = strongest_positive.values[0]
                         pos_idx = strongest_positive.index[0]
-                        pos_eco = pos_idx[0].replace('EXTERNO_', '').replace('_', ' ').title()
+                        pos_eco = pos_idx[0].replace('EXTERNO_ECONOMICO_', '').replace('_', ' ').title()
                         pos_aud = pos_idx[1].replace('LINEAR_GLOBO_', '').replace('%', ' %')
                         
                         if pos_val > 0.3:
                             st.success(f"**Relação Positiva Forte:** {pos_eco} tem correlação positiva de {pos_val:.2f} com {pos_aud}, "
-                                    f"sugerindo que aumentos neste indicador estão associados a maiores níveis de audiência.")
+                                    f"sugerindo que aumentos neste indicador estão associados a maiores níveis de audiência da Globo.")
                     
                     if not strongest_negative.empty:
                         neg_val = strongest_negative.values[0]
                         neg_idx = strongest_negative.index[0]
-                        neg_eco = neg_idx[0].replace('EXTERNO_', '').replace('_', ' ').title()
+                        neg_eco = neg_idx[0].replace('EXTERNO_ECONOMICO_', '').replace('_', ' ').title()
                         neg_aud = neg_idx[1].replace('LINEAR_GLOBO_', '').replace('%', ' %')
                         
                         if neg_val < -0.3:
-                            st.error(f"**Relação Negativa Forte:** {neg_eco} tem correlação negativa de {neg_val:.2f} com {neg_aud}, "
-                                f"sugerindo que aumentos neste indicador estão associados a menores níveis de audiência.")
+                            st.error(f"**Relação Negativa Forte:** {neg_eco} tem correlação negativa de {neg_val:.2f} com {pos_aud}, "
+                                f"sugerindo que aumentos neste indicador estão associados a menores níveis de audiência da Globo.")
                     
                     # Additional insights based on specific economic indicators
-                    if 'EXTERNO_unemployment_rate' in economic_cols and 'LINEAR_GLOBO_cov%' in audience_metrics:
-                        unemp_corr = corr_matrix.loc['EXTERNO_unemployment_rate', 'LINEAR_GLOBO_cov%']
+                    unemployment_col = [col for col in economic_cols if 'unemployment' in col.lower()]
+                    if unemployment_col and audience_metrics:
+                        unemp_col = unemployment_col[0]
+                        unemp_corr = corr_matrix.loc[unemp_col, tv_col]
                         
-                        if unemp_corr > 0.3:
-                            st.info(f"**Desemprego e Audiência:** A correlação de {unemp_corr:.2f} entre desemprego e audiência "
-                                f"sugere que em períodos de maior desemprego há maior consumo de TV Linear, possivelmente "
-                                f"devido a mais pessoas em casa e/ou a busca por entretenimento de menor custo.")
-                        elif unemp_corr < -0.3:
-                            st.info(f"**Desemprego e Audiência:** A correlação de {unemp_corr:.2f} entre desemprego e audiência "
-                                f"sugere que em períodos de maior desemprego há menor consumo de TV Linear, possivelmente "
-                                f"indicando mudança para alternativas de entretenimento mais econômicas.")
+                        if abs(unemp_corr) > 0.3:
+                            direction = "positiva" if unemp_corr > 0 else "negativa"
+                            impact = "maior" if unemp_corr > 0 else "menor"
+                            reason = "mais pessoas em casa e/ou a busca por entretenimento de menor custo" if unemp_corr > 0 else "mudança para alternativas de entretenimento mais econômicas"
+                            
+                            st.info(f"**Desemprego e Audiência:** A correlação {direction} de {unemp_corr:.2f} entre desemprego e audiência "
+                                f"sugere que em períodos de maior desemprego há {impact} consumo de TV Linear Globo, possivelmente "
+                                f"devido a {reason}.")
                     
-                    if 'EXTERNO_inflation_ipca' in economic_cols and 'LINEAR_GLOBO_cov%' in audience_metrics:
-                        infl_corr = corr_matrix.loc['EXTERNO_inflation_ipca', 'LINEAR_GLOBO_cov%']
+                    inflation_col = [col for col in economic_cols if 'inflation' in col.lower()]
+                    if inflation_col and audience_metrics:
+                        infl_col = inflation_col[0]
+                        infl_corr = corr_matrix.loc[infl_col, tv_col]
                         
                         if abs(infl_corr) > 0.3:
                             dir_word = "maior" if infl_corr > 0 else "menor"
                             st.info(f"**Inflação e Audiência:** A correlação de {infl_corr:.2f} entre inflação (IPCA) e audiência "
-                                f"sugere que períodos de inflação mais alta estão associados a {dir_word} consumo de TV Linear.")
+                                f"sugere que períodos de inflação mais alta estão associados a {dir_word} consumo de TV Linear Globo.")
             else:
                 st.warning("Dados insuficientes para análise de indicadores econômicos.")
         else:
             st.warning("Dados econômicos ou de audiência não estão disponíveis.")
 
-    # 4. Events Analysis Tab
+    ########################################
+    # 4. Recurring Programs Analysis Tab   #
+    ########################################
     with tabs[1]:
-        st.subheader("Análise de Eventos")
+        st.subheader("Análise de Programas Recorrentes")
         
-        # Different explanations based on granularity
-        if granularity == "Horário":
-            st.markdown("""
-            Eventos específicos como competições esportivas, programas concorrentes, ou acontecimentos relevantes 
-            podem impactar significativamente a audiência de TV em horários específicos. Esta análise quantifica 
-            o impacto desses eventos hora a hora, permitindo entender como afetam a audiência precisamente nos
-            momentos em que ocorrem.
-            
-            O gráfico abaixo mostra a evolução horária da audiência com marcadores nos momentos em que ocorreram eventos específicos.
-            """)
-        else:
-            st.markdown("""
-            Eventos específicos como competições esportivas, programas concorrentes, ou acontecimentos relevantes 
-            podem impactar significativamente a audiência de TV. Esta análise quantifica o impacto desses eventos,
-            permitindo entender melhor como o contexto externo influencia os resultados de audiência.
-            
-            O gráfico abaixo mostra a evolução da audiência com marcadores nos dias em que ocorreram eventos específicos.
-            """)
+        st.markdown("""
+        Programas recorrentes como novelas, reality shows e jogos de futebol podem ter impacto significativo
+        na audiência da TV Globo, tanto os transmitidos pela própria Globo quanto os exibidos por emissoras concorrentes.
         
-        if event_cols and tv_col:
-            # Filter data where at least one event and tv_col have valid values
-            valid_events = []
-            for col in event_cols:
-                if selected_df[col].std() > 0:  # Check if column has variation
-                    valid_events.append(col)
+        Esta análise permite observar como programas recorrentes de emissoras concorrentes podem "roubar" audiência da TV Globo,
+        ou como programas da própria Globo tendem a aumentar sua audiência.
+        """)
+        
+        # Find columns for recurring programs
+        recorrente_cols = [col for col in selected_df.columns if col.startswith('EXTERNO_GRADE_RECORRENTE_')]
+        
+        if recorrente_cols and tv_col:
+            # Extract unique program types from column names
+            # The program type is in the 4th position when splitting by '_'
+            program_types = set()
+            for col in recorrente_cols:
+                parts = col.split('_')
+                if len(parts) >= 5:  # Ensure we have enough parts
+                    program_types.add(parts[4])  # Extract program type (4th element)
             
-            if valid_events:
-                # Create a dataframe for plotting with valid events only
-                plot_df = selected_df[['data_hora', tv_col] + valid_events].dropna().copy()
+            program_types = sorted(list(program_types))
+            
+            if program_types:
+                # Let user select a program type to analyze
+                selected_program = st.selectbox(
+                    "Selecione um programa para análise:",
+                    options=program_types
+                )
                 
-                if not plot_df.empty:
-                    # Convert event columns to descriptive names
-                    for event_col in valid_events:
-                        event_name = event_col.replace('EXTERNO_', '').replace('_', ' ').title()
-                        plot_df[event_name] = plot_df[event_col]
+                # Get all columns related to the selected program
+                program_cols = [col for col in recorrente_cols if f"_{selected_program}_" in col]
+                
+                if program_cols:
+                    # Extract broadcaster from each column
+                    broadcasters = []
+                    for col in program_cols:
+                        parts = col.split('_')
+                        if len(parts) >= 6:  # Ensure we have enough parts
+                            broadcasters.append(parts[3])  # Extract broadcaster (5th element)
                     
-                    # Create timeline with event markers
-                    fig = go.Figure()
+                    st.markdown(f"### Impacto do Programa {selected_program} na Audiência da TV Globo")
                     
-                    # Add TV audience line
-                    fig.add_trace(
-                        go.Scatter(
-                            x=plot_df['data_hora'],
-                            y=plot_df[tv_col],
-                            name='Audiência TV (cov%)',
-                            line=dict(color='rgb(31, 119, 180)', width=2)
-                        )
-                    )
-                    
-                    # Add markers for each event
-                    colors = ['rgb(255, 127, 14)', 'rgb(44, 160, 44)', 'rgb(214, 39, 40)', 
-                            'rgb(148, 103, 189)', 'rgb(140, 86, 75)']
-                    
-                    for i, event_col in enumerate(valid_events):
-                        event_name = event_col.replace('EXTERNO_', '').replace('_', ' ').title()
-                        
-                        # Filter for days when the event occurred
-                        event_days = plot_df[plot_df[event_col] > 0]
-                        
-                        if not event_days.empty:
-                            fig.add_trace(
-                                go.Scatter(
-                                    x=event_days['data_hora'],
-                                    y=event_days[tv_col],
-                                    mode='markers',
-                                    name=event_name,
-                                    marker=dict(
-                                        size=10,
-                                        color=colors[i % len(colors)],
-                                        symbol='diamond'
-                                    )
-                                )
-                            )
-                    
-                    # Update layout
-                    time_unit = "horário" if granularity == "Horário" else "diário" if granularity == "Diário" else "semanal"
-                    fig.update_layout(
-                        title=f'Evolução {time_unit} da Audiência TV com Marcadores de Eventos ({granularity})',
-                        xaxis_title='Data e Hora' if granularity == "Horário" else 'Data',
-                        yaxis_title='Audiência TV (cov%)',
-                        legend_title='Eventos',
-                        hovermode="closest"
-                    )
-                    
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Create impact analysis table
-                    st.markdown("### Impacto dos Eventos na Audiência TV")
-                    
-                    if granularity == "Horário":
-                        st.markdown("""
-                        A tabela abaixo quantifica o impacto de diferentes tipos de eventos na audiência de TV por hora.
-                        Para cada evento, calculamos a diferença percentual média na audiência durante as horas em que o evento
-                        ocorreu comparado com horas sem o evento. Isso permite entender o impacto preciso no momento exato de ocorrência.
-                        """)
-                    else:
-                        st.markdown("""
-                        A tabela abaixo quantifica o impacto de diferentes tipos de eventos na audiência de TV.
-                        Para cada evento, calculamos a diferença percentual média na audiência durante o evento
-                        comparado com períodos sem o evento.
-                        """)
-                    
-                    # Calculate impact for each event
+                    # Calculate impact for each broadcaster
                     impact_data = []
                     
-                    for event_col in valid_events:
-                        event_name = event_col.replace('EXTERNO_', '').replace('_', ' ').title()
+                    for col in program_cols:
+                        # Extract broadcaster name
+                        parts = col.split('_')
+                        broadcaster = parts[3] if len(parts) >= 6 else "Unknown"
                         
-                        # Calculate audience with and without event
-                        event_on = plot_df[plot_df[event_col] > 0][tv_col].mean()
-                        event_off = plot_df[plot_df[event_col] == 0][tv_col].mean()
+                        # Calculate audience with and without program
+                        valid_data = selected_df.dropna(subset=[col, tv_col])
+                        if valid_data.empty or valid_data[col].sum() == 0:
+                            continue
+                            
+                        program_on = valid_data[valid_data[col] > 0][tv_col].mean()
+                        program_off = valid_data[valid_data[col] == 0][tv_col].mean()
                         
                         # Calculate impact percentage
-                        if event_off > 0:  # Avoid division by zero
-                            impact_pct = ((event_on / event_off) - 1) * 100
+                        if program_off > 0:  # Avoid division by zero
+                            impact_pct = ((program_on / program_off) - 1) * 100
                             
                             # Count occurrences
-                            occurrences = plot_df[plot_df[event_col] > 0].shape[0]
+                            occurrences = valid_data[valid_data[col] > 0].shape[0]
+                            
+                            relation_type = "própria" if broadcaster == "GLOBO" else "concorrente"
                             
                             impact_data.append({
-                                "Evento": event_name,
-                                "Impacto na Audiência (%)": f"{impact_pct:.2f}%",
+                                "Programa": selected_program,
+                                "Emissora": broadcaster,
+                                "Tipo": relation_type,
+                                "Impacto (%)": impact_pct,
                                 "Direção": "Positivo" if impact_pct > 0 else "Negativo",
                                 "Ocorrências": occurrences
                             })
                     
                     if impact_data:
-                        # Convert to DataFrame
+                        # Convert to DataFrame and format
                         impact_df = pd.DataFrame(impact_data)
                         
-                        # Display as table
-                        st.dataframe(impact_df, hide_index=True, use_container_width=True)
-                        
-                        # Generate insights based on impact
-                        st.markdown("### Insights sobre Eventos")
-                        
-                        # Find events with strongest positive and negative impacts
-                        pos_events = [event for event in impact_data if "Positivo" in event["Direção"]]
-                        neg_events = [event for event in impact_data if "Negativo" in event["Direção"]]
-                        
-                        # Sort by impact magnitude
-                        pos_events.sort(key=lambda x: float(x["Impacto na Audiência (%)"].replace("%", "")), reverse=True)
-                        neg_events.sort(key=lambda x: float(x["Impacto na Audiência (%)"].replace("%", "")))
-                        
-                        if pos_events:
-                            top_pos = pos_events[0]
-                            pos_impact = float(top_pos["Impacto na Audiência (%)"].replace("%", ""))
+                        # Create a key insight about this program's impact
+                        if "GLOBO" in impact_df["Emissora"].values:
+                            globo_impact = impact_df[impact_df["Emissora"] == "GLOBO"]["Impacto (%)"].values[0]
+                            direction = "aumenta" if globo_impact > 0 else "reduz"
                             
-                            if pos_impact > 5:  # Only show if impact is significant
-                                time_text = "horas" if granularity == "Horário" else "dias" if granularity == "Diário" else "semanas"
-                                st.success(f"**Evento com Maior Impacto Positivo:** {top_pos['Evento']} aumenta a audiência "
-                                        f"em {top_pos['Impacto na Audiência (%)']} em média, baseado em {top_pos['Ocorrências']} {time_text}.")
+                            st.info(f"**{selected_program} na Globo:** Quando exibido na própria Globo, este programa {direction} "
+                                  f"a audiência da emissora em {abs(globo_impact):.2f}% em média.")
                         
-                        if neg_events:
-                            top_neg = neg_events[0]
-                            neg_impact = float(top_neg["Impacto na Audiência (%)"].replace("%", ""))
+                        # Find competitors with biggest impact
+                        competitors = impact_df[impact_df["Emissora"] != "GLOBO"]
+                        if not competitors.empty:
+                            strongest_competitor = competitors.loc[competitors["Impacto (%)"].abs().idxmax()]
+                            comp_direction = "aumenta" if strongest_competitor["Impacto (%)"] > 0 else "reduz"
                             
-                            if neg_impact < -5:  # Only show if impact is significant
-                                time_text = "horas" if granularity == "Horário" else "dias" if granularity == "Diário" else "semanas"
-                                st.error(f"**Evento com Maior Impacto Negativo:** {top_neg['Evento']} reduz a audiência "
-                                    f"em {top_neg['Impacto na Audiência (%)']} em média, baseado em {top_neg['Ocorrências']} {time_text}.")
+                            st.warning(f"**{selected_program} na {strongest_competitor['Emissora']}:** Quando exibido nesta emissora concorrente, "
+                                     f"{comp_direction} a audiência da Globo em {abs(strongest_competitor['Impacto (%)']):.2f}% em média.")
+                            
+                            if strongest_competitor["Impacto (%)"] < 0:
+                                st.error(f"👉 Isso sugere que o programa {selected_program} na {strongest_competitor['Emissora']} está "
+                                       f"'roubando' audiência da TV Globo, potencialmente atraindo seus telespectadores.")
                         
-                        # Additional analysis for specific event types
-                        football_events = [event for event in impact_data if "Futebol" in event["Evento"]]
-                        if football_events:
-                            football = football_events[0]
-                            impact = float(football["Impacto na Audiência (%)"].replace("%", ""))
+                        # Create a bar chart comparing impact across broadcasters
+                        impact_df["Impacto Formatado"] = impact_df["Impacto (%)"].apply(lambda x: f"{x:.2f}%")
+                        
+                        # Add a special color for Globo vs competitors
+                        color_map = {"própria": "green", "concorrente": "red"}
+                        
+                        fig = px.bar(
+                            impact_df,
+                            x="Emissora",
+                            y="Impacto (%)",
+                            color="Tipo",
+                            text="Impacto Formatado",
+                            title=f"Impacto do {selected_program} na Audiência da TV Globo por Emissora",
+                            color_discrete_map=color_map,
+                            hover_data=["Ocorrências"]
+                        )
+                        
+                        fig.update_layout(
+                            xaxis_title="Emissora",
+                            yaxis_title="Impacto na Audiência da Globo (%)",
+                            yaxis=dict(zeroline=True, zerolinecolor='black', zerolinewidth=1)
+                        )
+                        
+                        fig.add_annotation(
+                            text="Acima de 0: Aumenta audiência da Globo | Abaixo de 0: Reduz audiência da Globo",
+                            xref="paper", yref="paper",
+                            x=0.5, y=1.05,
+                            showarrow=False,
+                            font=dict(size=10)
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Create timeline visualization
+                        st.markdown("### Evolução Temporal")
+                        
+                        st.markdown(f"""
+                        O gráfico abaixo mostra a evolução da audiência da TV Globo ao longo do tempo, 
+                        com marcadores destacando quando o programa {selected_program} foi exibido em cada emissora.
+                        Isso permite visualizar o impacto em tempo real do programa na audiência da Globo.
+                        """)
+                        
+                        # Create figure for temporal analysis
+                        fig_time = go.Figure()
+                        
+                        # Add base audience line
+                        fig_time.add_trace(
+                            go.Scatter(
+                                x=selected_df["data_hora"],
+                                y=selected_df[tv_col],
+                                mode="lines",
+                                name="Audiência TV Globo",
+                                line=dict(color="lightgray", width=1)
+                            )
+                        )
+                        
+                        # Colors for different broadcasters
+                        broadcaster_colors = {
+                            "GLOBO": "green",
+                            "SBT": "blue",
+                            "RECORD": "red",
+                            "BAND": "purple",
+                            "TV BAND": "purple"
+                        }
+                        
+                        # Add markers for program occurrences by broadcaster
+                        for col in program_cols:
+                            parts = col.split('_')
+                            broadcaster = parts[3] if len(parts) >= 6 else "Unknown"
                             
-                            if abs(impact) > 5:
-                                direction = "aumenta" if impact > 0 else "reduz"
+                            # Filter data for when this program is on
+                            program_data = selected_df[selected_df[col] > 0]
+                            
+                            if not program_data.empty:
+                                color = broadcaster_colors.get(broadcaster, "gray")
                                 
-                                # Add hourly specific insight
-                                if granularity == "Horário":
-                                    st.info(f"**Impacto de Eventos Esportivos:** Futebol {direction} a audiência em "
-                                        f"{abs(impact):.2f}% durante as horas em que ocorre, sugerindo que as transmissões esportivas "
-                                        f"{'atraem' if impact > 0 else 'competem pela'} audiência da TV Linear no momento exato "
-                                        f"em que acontecem.")
-                                else:
-                                    st.info(f"**Impacto de Eventos Esportivos:** Futebol {direction} a audiência em "
-                                        f"{abs(impact):.2f}%, sugerindo que a programação esportiva {'atrai' if impact > 0 else 'compete pela'} "
-                                        f"audiência da TV Linear.")
+                                fig_time.add_trace(
+                                    go.Scatter(
+                                        x=program_data["data_hora"],
+                                        y=program_data[tv_col],
+                                        mode="markers",
+                                        name=f"{selected_program} na {broadcaster}",
+                                        marker=dict(
+                                            color=color,
+                                            size=8,
+                                            symbol="circle"
+                                        )
+                                    )
+                                )
+                        
+                        # Update layout
+                        fig_time.update_layout(
+                            title=f"Audiência da TV Globo Durante Exibição de {selected_program} por Emissora",
+                            xaxis_title="Data/Hora",
+                            yaxis_title="Audiência TV Globo (cov%)",
+                            legend_title="Eventos",
+                            hovermode="closest"
+                        )
+                        
+                        st.plotly_chart(fig_time, use_container_width=True)
+                        
+                        # Display a table with the impact data
+                        st.markdown("### Impacto Detalhado por Emissora")
+                        
+                        impact_table = impact_df[["Emissora", "Impacto Formatado", "Direção", "Ocorrências"]]
+                        impact_table = impact_table.rename(columns={"Impacto Formatado": "Impacto na Audiência da Globo"})
+                        
+                        st.dataframe(impact_table, hide_index=True, use_container_width=True)
                     else:
-                        st.warning("Não foi possível calcular o impacto dos eventos na audiência.")
+                        st.warning(f"Não há dados suficientes para analisar o impacto do programa {selected_program}.")
                 else:
-                    st.warning("Dados insuficientes para análise de eventos.")
+                    st.warning(f"Não foram encontradas informações para o programa {selected_program}.")
             else:
-                st.warning("Não foram encontrados eventos válidos no período analisado.")
+                st.warning("Não foi possível identificar tipos de programas recorrentes.")
+                
+            # Show overall ranking of program impacts
+            st.markdown("### Ranking de Impacto de Programas na Audiência da TV Globo")
+            
+            all_program_impacts = []
+            
+            for col in recorrente_cols:
+                parts = col.split('_')
+                if len(parts) >= 6:
+                    program = parts[4]
+                    broadcaster = parts[3]
+                    
+                    valid_data = selected_df.dropna(subset=[col, tv_col])
+                    if valid_data.empty or valid_data[col].sum() == 0:
+                        continue
+                    
+                    program_on = valid_data[valid_data[col] > 0][tv_col].mean()
+                    program_off = valid_data[valid_data[col] == 0][tv_col].mean()
+                    
+                    if program_off > 0:
+                        impact_pct = ((program_on / program_off) - 1) * 100
+                        relation_type = "própria" if broadcaster == "GLOBO" else "concorrente"
+                        
+                        all_program_impacts.append({
+                            "Programa": program,
+                            "Emissora": broadcaster,
+                            "Tipo": relation_type,
+                            "Impacto (%)": impact_pct,
+                            "Impacto Abs (%)": abs(impact_pct),
+                            "Direção": "Positivo" if impact_pct > 0 else "Negativo"
+                        })
+            
+            if all_program_impacts:
+                # Convert to DataFrame
+                all_impacts_df = pd.DataFrame(all_program_impacts)
+                
+                # Create two tables: top positive and top negative impacts
+                if not all_impacts_df[all_impacts_df["Impacto (%)"] > 0].empty:
+                    st.markdown("#### Programas com Maior Impacto Positivo na Audiência da Globo")
+                    positive_df = all_impacts_df[all_impacts_df["Impacto (%)"] > 0].sort_values("Impacto (%)", ascending=False).head(5)
+                    positive_df["Impacto (%)"] = positive_df["Impacto (%)"].apply(lambda x: f"{x:.2f}%")
+                    
+                    st.dataframe(
+                        positive_df[["Programa", "Emissora", "Tipo", "Impacto (%)"]],
+                        hide_index=True,
+                        use_container_width=True
+                    )
+                
+                if not all_impacts_df[all_impacts_df["Impacto (%)"] < 0].empty:
+                    st.markdown("#### Programas com Maior Impacto Negativo na Audiência da Globo")
+                    negative_df = all_impacts_df[all_impacts_df["Impacto (%)"] < 0].sort_values("Impacto (%)", ascending=True).head(5)
+                    negative_df["Impacto (%)"] = negative_df["Impacto (%)"].apply(lambda x: f"{x:.2f}%")
+                    
+                    st.dataframe(
+                        negative_df[["Programa", "Emissora", "Tipo", "Impacto (%)"]],
+                        hide_index=True,
+                        use_container_width=True
+                    )
+                    
+                    # Create insight about competitors stealing audience
+                    competitors_negative = negative_df[negative_df["Emissora"] != "GLOBO"]
+                    if not competitors_negative.empty:
+                        top_competitor = competitors_negative.iloc[0]
+                        
+                        st.error(f"""
+                        **Maior 'Ladrão' de Audiência:** O programa {top_competitor['Programa']} na {top_competitor['Emissora']} 
+                        causa a maior redução na audiência da TV Globo ({top_competitor['Impacto (%)']}).
+                        
+                        Isso indica uma forte competição direta por audiência, onde os telespectadores estão 
+                        escolhendo este programa em vez da programação da Globo no mesmo horário.
+                        """)
         else:
-            st.warning("Dados de eventos ou de audiência não estão disponíveis.")
+            st.warning("Não foram encontrados dados sobre programas recorrentes.")
 
-    # 5. Social Volume Analysis Tab
+    ########################################
+    # 5. Genre Analysis Tab                #
+    ########################################
     with tabs[2]:
+        st.subheader("Análise de Gêneros de Programação")
+        
+        st.markdown("""
+        Diferentes gêneros de programação têm impactos distintos na audiência da TV Globo.
+        Esta análise mostra como cada gênero, tanto na própria Globo quanto em emissoras concorrentes,
+        afeta os níveis de audiência da Globo, permitindo identificar:
+        
+        1. Quais gêneros da própria Globo atraem mais audiência
+        2. Quais gêneros em emissoras concorrentes mais "roubam" audiência da Globo
+        """)
+        
+        # Find columns for program genres
+        genero_cols = [col for col in selected_df.columns if col.startswith('EXTERNO_GRADE_GENERO_')]
+        
+        if genero_cols and tv_col:
+            # Extract unique genres and broadcasters
+            genres = set()
+            broadcasters = set()
+            
+            for col in genero_cols:
+                parts = col.split('_')
+                if len(parts) >= 6:  # Ensure we have enough parts
+                    broadcaster = parts[3]  # Extract broadcaster
+                    genre = parts[4]  # Extract genre
+                    
+                    genres.add(genre)
+                    broadcasters.add(broadcaster)
+            
+            genres = sorted(list(genres))
+            broadcasters = sorted(list(broadcasters))
+            
+            if genres:
+                # Let user select a genre to analyze
+                selected_genre = st.selectbox(
+                    "Selecione um gênero para análise:",
+                    options=genres
+                )
+                
+                # Get all columns related to the selected genre
+                genre_cols = [col for col in genero_cols if f"_GENERO_{selected_genre}_" in col or f"_GENERO_{selected_genre}" in col]
+                
+                if genre_cols:
+                    st.markdown(f"### Impacto do Gênero {selected_genre} na Audiência da TV Globo")
+                    
+                    # Calculate impact for each broadcaster
+                    impact_data = []
+                    
+                    for col in genre_cols:
+                        # Extract broadcaster name
+                        parts = col.split('_')
+                        if len(parts) >= 4:
+                            broadcaster = parts[3]
+                            
+                            # Calculate audience with and without genre
+                            valid_data = selected_df.dropna(subset=[col, tv_col])
+                            if valid_data.empty or valid_data[col].sum() == 0:
+                                continue
+                                
+                            genre_on = valid_data[valid_data[col] > 0][tv_col].mean()
+                            genre_off = valid_data[valid_data[col] == 0][tv_col].mean()
+                            
+                            # Calculate impact percentage
+                            if genre_off > 0:  # Avoid division by zero
+                                impact_pct = ((genre_on / genre_off) - 1) * 100
+                                
+                                # Count occurrences
+                                occurrences = valid_data[valid_data[col] > 0].shape[0]
+                                
+                                relation_type = "própria" if broadcaster == "GLOBO" else "concorrente"
+                                
+                                impact_data.append({
+                                    "Gênero": selected_genre,
+                                    "Emissora": broadcaster,
+                                    "Tipo": relation_type,
+                                    "Impacto (%)": impact_pct,
+                                    "Direção": "Positivo" if impact_pct > 0 else "Negativo",
+                                    "Ocorrências": occurrences
+                                })
+                    
+                    if impact_data:
+                        # Convert to DataFrame and format
+                        impact_df = pd.DataFrame(impact_data)
+                        impact_df["Impacto Formatado"] = impact_df["Impacto (%)"].apply(lambda x: f"{x:.2f}%")
+                        
+                        # Create a key insight about this genre's impact
+                        if "GLOBO" in impact_df["Emissora"].values:
+                            globo_impact = impact_df[impact_df["Emissora"] == "GLOBO"]["Impacto (%)"].values[0]
+                            direction = "aumenta" if globo_impact > 0 else "reduz"
+                            
+                            st.info(f"**{selected_genre} na Globo:** Quando este gênero é exibido na própria Globo, {direction} "
+                                  f"a audiência da emissora em {abs(globo_impact):.2f}% em média.")
+                        
+                        # Find competitors with biggest impact
+                        competitors = impact_df[impact_df["Emissora"] != "GLOBO"]
+                        if not competitors.empty:
+                            strongest_competitor = competitors.loc[competitors["Impacto (%)"].abs().idxmax()]
+                            comp_direction = "aumenta" if strongest_competitor["Impacto (%)"] > 0 else "reduz"
+                            
+                            st.warning(f"**{selected_genre} na {strongest_competitor['Emissora']}:** Quando este gênero é exibido nesta emissora concorrente, "
+                                     f"{comp_direction} a audiência da Globo em {abs(strongest_competitor['Impacto (%)']):.2f}% em média.")
+                            
+                            if strongest_competitor["Impacto (%)"] < 0:
+                                st.error(f"👉 Isso sugere que programas do gênero {selected_genre} na {strongest_competitor['Emissora']} estão "
+                                       f"'roubando' audiência da TV Globo, potencialmente atraindo seus telespectadores.")
+                        
+                        # Add a special color for Globo vs competitors
+                        color_map = {"própria": "green", "concorrente": "red"}
+                        
+                        # Create a bar chart comparing impact across broadcasters
+                        fig = px.bar(
+                            impact_df,
+                            x="Emissora",
+                            y="Impacto (%)",
+                            color="Tipo",
+                            text="Impacto Formatado",
+                            title=f"Impacto do Gênero {selected_genre} na Audiência da TV Globo por Emissora",
+                            color_discrete_map=color_map,
+                            hover_data=["Ocorrências"]
+                        )
+                        
+                        fig.update_layout(
+                            xaxis_title="Emissora",
+                            yaxis_title="Impacto na Audiência da Globo (%)",
+                            yaxis=dict(zeroline=True, zerolinecolor='black', zerolinewidth=1)
+                        )
+                        
+                        fig.add_annotation(
+                            text="Acima de 0: Aumenta audiência da Globo | Abaixo de 0: Reduz audiência da Globo",
+                            xref="paper", yref="paper",
+                            x=0.5, y=1.05,
+                            showarrow=False,
+                            font=dict(size=10)
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Display a table with the impact data
+                        st.markdown("### Impacto Detalhado por Emissora")
+                        
+                        impact_table = impact_df[["Emissora", "Impacto Formatado", "Direção", "Ocorrências"]]
+                        impact_table = impact_table.rename(columns={"Impacto Formatado": "Impacto na Audiência da Globo"})
+                        
+                        st.dataframe(impact_table, hide_index=True, use_container_width=True)
+                    else:
+                        st.warning(f"Não há dados suficientes para analisar o impacto do gênero {selected_genre}.")
+                else:
+                    st.warning(f"Não foram encontradas informações para o gênero {selected_genre}.")
+                    
+                # Show overall ranking of genre impacts
+                st.markdown("### Ranking de Impacto de Gêneros na Audiência da TV Globo")
+                
+                all_genre_impacts = []
+                
+                for col in genero_cols:
+                    parts = col.split('_')
+                    if len(parts) >= 5:
+                        broadcaster = parts[3]
+                        genre = parts[4]
+                        
+                        valid_data = selected_df.dropna(subset=[col, tv_col])
+                        if valid_data.empty or valid_data[col].sum() == 0:
+                            continue
+                        
+                        genre_on = valid_data[valid_data[col] > 0][tv_col].mean()
+                        genre_off = valid_data[valid_data[col] == 0][tv_col].mean()
+                        
+                        if genre_off > 0:
+                            impact_pct = ((genre_on / genre_off) - 1) * 100
+                            relation_type = "própria" if broadcaster == "GLOBO" else "concorrente"
+                            
+                            all_genre_impacts.append({
+                                "Gênero": genre,
+                                "Emissora": broadcaster,
+                                "Tipo": relation_type,
+                                "Impacto (%)": impact_pct,
+                                "Impacto Abs (%)": abs(impact_pct),
+                                "Direção": "Positivo" if impact_pct > 0 else "Negativo"
+                            })
+                
+                if all_genre_impacts:
+                    # Convert to DataFrame
+                    all_impacts_df = pd.DataFrame(all_genre_impacts)
+                    
+                    # Create two tabs for viewing by genre or by broadcaster
+                    genre_view_tabs = st.tabs(["Ver por Gênero", "Ver por Emissora"])
+                    
+                    with genre_view_tabs[0]:
+                        # Calculate average impact by genre across broadcasters
+                        genre_avg = all_impacts_df.groupby("Gênero")["Impacto (%)"].mean().reset_index()
+                        genre_avg = genre_avg.sort_values("Impacto (%)", ascending=False)
+                        
+                        # Top and bottom 5 genres
+                        top_genres = genre_avg.head(5)
+                        bottom_genres = genre_avg.tail(5)
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.markdown("#### Top 5 Gêneros que Mais Aumentam Audiência da Globo")
+                            fig_top = px.bar(
+                                top_genres,
+                                x="Gênero",
+                                y="Impacto (%)",
+                                text=top_genres["Impacto (%)"].apply(lambda x: f"{x:.2f}%"),
+                                color="Impacto (%)",
+                                color_continuous_scale=["yellow", "green"]
+                            )
+                            
+                            fig_top.update_layout(
+                                xaxis_title="Gênero",
+                                yaxis_title="Impacto Médio (%)",
+                                xaxis_tickangle=-45
+                            )
+                            
+                            st.plotly_chart(fig_top, use_container_width=True)
+                        
+                        with col2:
+                            st.markdown("#### Top 5 Gêneros que Mais Reduzem Audiência da Globo")
+                            fig_bottom = px.bar(
+                                bottom_genres,
+                                x="Gênero",
+                                y="Impacto (%)",
+                                text=bottom_genres["Impacto (%)"].apply(lambda x: f"{x:.2f}%"),
+                                color="Impacto (%)",
+                                color_continuous_scale=["red", "yellow"]
+                            )
+                            
+                            fig_bottom.update_layout(
+                                xaxis_title="Gênero",
+                                yaxis_title="Impacto Médio (%)",
+                                xaxis_tickangle=-45
+                            )
+                            
+                            st.plotly_chart(fig_bottom, use_container_width=True)
+                    
+                    with genre_view_tabs[1]:
+                        # Group by broadcaster and display top genres for each
+                        for broadcaster in broadcasters:
+                            broadcaster_data = all_impacts_df[all_impacts_df["Emissora"] == broadcaster]
+                            
+                            if not broadcaster_data.empty:
+                                st.markdown(f"#### Top Gêneros na {broadcaster}")
+                                
+                                # Sort by impact
+                                broadcaster_data = broadcaster_data.sort_values("Impacto (%)", ascending=False)
+                                broadcaster_data["Impacto (%)"] = broadcaster_data["Impacto (%)"].apply(lambda x: f"{x:.2f}%")
+                                
+                                # Show the table
+                                st.dataframe(
+                                    broadcaster_data[["Gênero", "Impacto (%)", "Direção"]],
+                                    hide_index=True,
+                                    use_container_width=True
+                                )
+                                
+                                # Add an insight about competition
+                                if broadcaster != "GLOBO":
+                                    negative_impacts = all_impacts_df[(all_impacts_df["Emissora"] == broadcaster) & 
+                                                                    (all_impacts_df["Impacto (%)"] < 0)]
+                                    
+                                    if not negative_impacts.empty:
+                                        worst_genre = negative_impacts.sort_values("Impacto (%)").iloc[0]
+                                        
+                                        st.warning(f"""
+                                        **Competição Direta:** O gênero {worst_genre['Gênero']} na {broadcaster} 
+                                        causa uma redução de {abs(worst_genre['Impacto (%)']):.2f}% na audiência da Globo,
+                                        o que sugere forte competição neste segmento de programação.
+                                        """)
+                else:
+                    st.warning("Não há dados suficientes para criar um ranking de gêneros.")
+            else:
+                st.warning("Não foi possível identificar gêneros de programação.")
+        else:
+            st.warning("Não foram encontrados dados sobre gêneros de programação.")
+
+    ########################################
+    # 6. Isolated Events Analysis Tab      #
+    ########################################
+    with tabs[3]:
+        st.subheader("Análise de Eventos Isolados")
+        
+        st.markdown("""
+        Eventos isolados representam acontecimentos pontuais como notícias importantes, eventos especiais, 
+        ou lançamentos que podem ter um impacto significativo na audiência da TV Globo.
+        
+        Diferentemente dos programas recorrentes, estes eventos são únicos ou raros, tornando sua análise 
+        particularmente valiosa para entender o impacto de acontecimentos específicos.
+        """)
+        
+        # Find columns for isolated events
+        isolado_cols = [col for col in selected_df.columns if col.startswith('EXTERNO_ISOLADO_')]
+        
+        if isolado_cols and tv_col:
+            # Create a timeline showing isolated events
+            st.markdown("### Linha do Tempo de Eventos Isolados")
+            
+            st.markdown("""
+            O gráfico abaixo mostra a audiência da TV Globo ao longo do tempo, com marcadores nos momentos 
+            em que ocorreram eventos isolados específicos. Isso permite visualizar o impacto imediato destes 
+            eventos na audiência.
+            """)
+            
+            # Create timeline figure
+            fig_timeline = go.Figure()
+            
+            # Add base audience line
+            fig_timeline.add_trace(
+                go.Scatter(
+                    x=selected_df["data_hora"],
+                    y=selected_df[tv_col],
+                    mode="lines",
+                    name="Audiência TV Globo",
+                    line=dict(color="lightgray", width=1)
+                )
+            )
+            
+            # Generate colors for different events
+            event_colors = px.colors.qualitative.Plotly
+            
+            # Add markers for each isolated event
+            for i, col in enumerate(isolado_cols):
+                event_name = col.replace('EXTERNO_ISOLADO_', '').replace('_', ' ')
+                color = event_colors[i % len(event_colors)]
+                
+                # Get data points where the event occurred
+                event_data = selected_df[selected_df[col] > 0]
+                
+                if not event_data.empty:
+                    fig_timeline.add_trace(
+                        go.Scatter(
+                            x=event_data["data_hora"],
+                            y=event_data[tv_col],
+                            mode="markers",
+                            name=event_name,
+                            marker=dict(
+                                color=color,
+                                size=10,
+                                symbol="star"
+                            )
+                        )
+                    )
+            
+            # Update layout
+            fig_timeline.update_layout(
+                title="Audiência da TV Globo Durante Eventos Isolados",
+                xaxis_title="Data/Hora",
+                yaxis_title="Audiência TV Globo (cov%)",
+                legend_title="Eventos",
+                hovermode="closest"
+            )
+            
+            st.plotly_chart(fig_timeline, use_container_width=True)
+            
+            # Calculate impact of each isolated event
+            st.markdown("### Impacto dos Eventos Isolados na Audiência")
+            
+            st.markdown("""
+            A tabela abaixo quantifica o impacto de cada evento isolado na audiência da TV Globo.
+            Para uma comparação justa, comparamos a audiência durante o evento com a audiência média
+            em períodos similares (mesmo dia da semana e horário) sem eventos.
+            """)
+            
+            # Calculate baseline for fair comparison
+            event_impacts = []
+            
+            for col in isolado_cols:
+                event_name = col.replace('EXTERNO_ISOLADO_', '').replace('_', ' ')
+                
+                # Get data points where the event occurred
+                event_data = selected_df[selected_df[col] > 0]
+                
+                if not event_data.empty:
+                    # Extract day of week and hour information for comparison
+                    event_data["day_of_week"] = event_data["data_hora"].dt.dayofweek
+                    event_data["hour"] = event_data["data_hora"].dt.hour
+                    
+                    # Calculate average audience during the event
+                    event_audience = event_data[tv_col].mean()
+                    
+                    # Create baseline for comparison - same days of week and hours without the event
+                    similar_periods = []
+                    
+                    for _, row in event_data.iterrows():
+                        day = row["day_of_week"]
+                        hour = row["hour"]
+                        
+                        # Find similar periods (same day & hour) without the event
+                        similar = selected_df[
+                            (selected_df["data_hora"].dt.dayofweek == day) & 
+                            (selected_df["data_hora"].dt.hour == hour) & 
+                            (selected_df[col] == 0)
+                        ]
+                        
+                        similar_periods.append(similar)
+                    
+                    # Combine all similar periods
+                    if similar_periods:
+                        baseline_data = pd.concat(similar_periods, ignore_index=True)
+                        
+                        if not baseline_data.empty:
+                            baseline_audience = baseline_data[tv_col].mean()
+                            
+                            # Calculate impact
+                            if baseline_audience > 0:
+                                impact_pct = ((event_audience / baseline_audience) - 1) * 100
+                                
+                                event_impacts.append({
+                                    "Evento": event_name,
+                                    "Audiência Durante Evento": event_audience,
+                                    "Audiência Típica (Baseline)": baseline_audience,
+                                    "Impacto (%)": impact_pct,
+                                    "Direção": "Positivo" if impact_pct > 0 else "Negativo",
+                                    "Ocorrências": len(event_data)
+                                })
+            
+            if event_impacts:
+                # Convert to DataFrame and sort by impact
+                impact_df = pd.DataFrame(event_impacts)
+                impact_df = impact_df.sort_values("Impacto (%)", ascending=False)
+                
+                # Format columns for display
+                impact_df["Audiência Durante Evento"] = impact_df["Audiência Durante Evento"].apply(lambda x: f"{x:.2f}%")
+                impact_df["Audiência Típica (Baseline)"] = impact_df["Audiência Típica (Baseline)"].apply(lambda x: f"{x:.2f}%")
+                impact_df["Impacto (%)"] = impact_df["Impacto (%)"].apply(lambda x: f"{x:.2f}%")
+                
+                # Display as table
+                st.dataframe(impact_df, hide_index=True, use_container_width=True)
+                
+                # Create a bar chart of impacts
+                impact_df_plot = pd.DataFrame(event_impacts)  # Create a new copy for plotting
+                
+                fig_impact = px.bar(
+                    impact_df_plot,
+                    x="Evento",
+                    y="Impacto (%)",
+                    color="Direção",
+                    text=impact_df_plot["Impacto (%)"].apply(lambda x: f"{x:.2f}%"),
+                    title="Impacto de Eventos Isolados na Audiência da TV Globo",
+                    color_discrete_map={"Positivo": "green", "Negativo": "red"},
+                    hover_data=["Ocorrências"]
+                )
+                
+                fig_impact.update_layout(
+                    xaxis_title="Evento",
+                    yaxis_title="Impacto na Audiência (%)",
+                    xaxis_tickangle=-45,
+                    yaxis=dict(zeroline=True, zerolinecolor='black', zerolinewidth=1)
+                )
+                
+                st.plotly_chart(fig_impact, use_container_width=True)
+                
+                # Generate insights
+                if not impact_df.empty:
+                    top_positive = impact_df[impact_df["Direção"] == "Positivo"]
+                    top_negative = impact_df[impact_df["Direção"] == "Negativo"]
+                    
+                    if not top_positive.empty:
+                        top_pos = top_positive.iloc[0]
+                        
+                        st.success(f"""
+                        **Evento com Maior Impacto Positivo:** {top_pos['Evento']} aumentou a audiência da Globo em 
+                        {top_pos['Impacto (%)']} comparado com períodos similares sem o evento.
+                        
+                        Este tipo de evento representa uma oportunidade para aumentar a audiência em momentos estratégicos.
+                        """)
+                    
+                    if not top_negative.empty:
+                        top_neg = top_negative.iloc[0]
+                        
+                        st.error(f"""
+                        **Evento com Maior Impacto Negativo:** {top_neg['Evento']} reduziu a audiência da Globo em 
+                        {top_neg['Impacto (%)']} comparado com períodos similares.
+                        
+                        Eventos deste tipo podem estar desviando a atenção dos telespectadores para outras atividades
+                        ou canais concorrentes.
+                        """)
+            else:
+                st.warning("Não foi possível calcular o impacto dos eventos isolados devido a dados insuficientes.")
+        else:
+            st.warning("Não foram encontrados dados sobre eventos isolados.")
+
+    ######################################
+    # 7. Social Volume Analysis Tab      #
+    ######################################
+    with tabs[4]:
         st.subheader("Análise de Volume Social")
         
-        if granularity == "Horário":
-            st.markdown("""
-            O volume de conversas nas redes sociais pode variar significativamente ao longo do dia e impactar a audiência TV hora a hora.
-            Programas que geram conversação intensa em tempo real podem atrair espectadores adicionais, enquanto assuntos
-            virais podem desviar a atenção da TV em horários específicos.
-            
-            Esta análise examina a relação entre o volume horário de tweets e métricas de audiência da TV Linear.
-            """)
-        else:
-            st.markdown("""
-            O volume de conversas nas redes sociais pode ser tanto um indicador como um driver da audiência de TV.
-            Programas que geram mais conversação podem atrair novos espectadores, enquanto assuntos muito discutidos
-            nas redes sociais podem desviar a atenção da TV.
-            
-            Esta análise examina a relação entre o volume de tweets e métricas de audiência da TV Linear.
-            """)
+        st.markdown("""
+        O volume de conversas nas redes sociais pode ser tanto um indicador como um impulsionador da audiência de TV.
+        Programas que geram mais conversação podem atrair novos espectadores, enquanto assuntos muito discutidos
+        nas redes sociais podem desviar a atenção da TV.
         
-        # Check if we have tweet data
-        if 'EXTERNO_quantidade_tweets' in selected_df.columns and tv_col:
-            # Filter data where both tweets and tv_col have valid values
-            valid_social_data = selected_df.dropna(subset=['EXTERNO_quantidade_tweets', tv_col])
+        Esta análise examina a relação entre o volume de atividade social e métricas de audiência da TV Globo.
+        """)
+        
+        # Find social volume columns based on new naming pattern
+        social_cols = [col for col in selected_df.columns if col.startswith('EXTERNO_NPS_')]
+        
+        if social_cols and tv_col:
+            # Filter data where both social and tv_col have valid values
+            valid_social_data = selected_df.dropna(subset=social_cols + [tv_col])
             
-            # Also filter for non-zero tweet values
-            valid_social_data = valid_social_data[valid_social_data['EXTERNO_quantidade_tweets'] > 0]
+            # Filter for non-zero social values
+            for col in social_cols:
+                valid_social_data = valid_social_data[valid_social_data[col] > 0]
             
             if not valid_social_data.empty:
-                # Create time series chart comparing tweet volume with TV audience
+                # Create time series chart comparing social volume with TV audience
                 fig = make_subplots(specs=[[{"secondary_y": True}]])
                 
                 # Add TV audience line
@@ -581,73 +1084,137 @@ def analise_externos(df):
                     go.Scatter(
                         x=valid_social_data['data_hora'],
                         y=valid_social_data[tv_col],
-                        name='Audiência TV (cov%)',
+                        name='Audiência TV Globo (cov%)',
                         line=dict(color='rgb(31, 119, 180)', width=3)
                     ),
                     secondary_y=False
                 )
                 
-                # Add tweet volume
-                fig.add_trace(
-                    go.Scatter(
-                        x=valid_social_data['data_hora'],
-                        y=valid_social_data['EXTERNO_quantidade_tweets'],
-                        name='Volume de Tweets',
-                        line=dict(color='rgb(255, 127, 14)', width=2)
-                    ),
-                    secondary_y=True
-                )
+                # Add social volume lines with different colors
+                colors = ['rgb(255, 127, 14)', 'rgb(44, 160, 44)', 'rgb(214, 39, 40)', 
+                        'rgb(148, 103, 189)', 'rgb(140, 86, 75)']
+                
+                for i, col in enumerate(social_cols):
+                    display_name = col.replace('EXTERNO_NPS_', '').replace('_', ' ').title()
+                    
+                    fig.add_trace(
+                        go.Scatter(
+                            x=valid_social_data['data_hora'],
+                            y=valid_social_data[col],
+                            name=display_name,
+                            line=dict(color=colors[i % len(colors)], width=2)
+                        ),
+                        secondary_y=True
+                    )
                 
                 # Update layout
                 time_unit = "" if granularity == "Horário" else "Diária" if granularity == "Diário" else "Semanal"
                 fig.update_layout(
-                    title=f'Evolução {time_unit} da Audiência TV vs. Volume de Tweets ({granularity})',
+                    title=f'Evolução {time_unit} da Audiência TV Globo vs. Volume Social ({granularity})',
                     xaxis_title='Data e Hora' if granularity == "Horário" else 'Data',
-                    yaxis_title='Audiência TV (cov%)',
-                    yaxis2_title='Quantidade de Tweets',
+                    yaxis_title='Audiência TV Globo (cov%)',
+                    yaxis2_title='Volume Social',
                     legend_title='Métricas',
                     hovermode="x unified"
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # Create scatter plot for correlation analysis
-                st.markdown("### Correlação entre Volume de Tweets e Audiência TV")
+                # Create correlation analysis
+                st.markdown("### Correlação entre Volume Social e Audiência TV")
                 
-                fig_scatter = px.scatter(
-                    valid_social_data,
-                    x='EXTERNO_quantidade_tweets',
-                    y=tv_col,
-                    trendline="ols",
-                    labels={
-                        'EXTERNO_quantidade_tweets': 'Quantidade de Tweets',
-                        tv_col: 'Audiência TV (cov%)'
-                    },
-                    title='Relação entre Volume de Tweets e Audiência TV'
-                )
+                # Calculate correlation matrix
+                correlation_data = []
                 
-                st.plotly_chart(fig_scatter, use_container_width=True)
+                for col in social_cols:
+                    display_name = col.replace('EXTERNO_NPS_', '').replace('_', ' ').title()
+                    corr = valid_social_data[col].corr(valid_social_data[tv_col])
+                    
+                    correlation_data.append({
+                        'Métrica Social': display_name,
+                        'Correlação': corr,
+                        'Força': abs(corr)
+                    })
                 
-                # Calculate correlation and regression
-                tweets_corr = valid_social_data['EXTERNO_quantidade_tweets'].corr(valid_social_data[tv_col])
+                if correlation_data:
+                    corr_df = pd.DataFrame(correlation_data)
+                    corr_df = corr_df.sort_values('Força', ascending=False)
+                    
+                    # Create bar chart of correlations
+                    fig_corr = px.bar(
+                        corr_df,
+                        x='Métrica Social',
+                        y='Correlação',
+                        color='Correlação',
+                        text=corr_df['Correlação'].apply(lambda x: f"{x:.2f}"),
+                        title='Correlação entre Métricas Sociais e Audiência TV Globo',
+                        color_continuous_scale=['red', 'white', 'green']
+                    )
+                    
+                    st.plotly_chart(fig_corr, use_container_width=True)
+                    
+                    # Show scatter plot for the most correlated metric
+                    if not corr_df.empty:
+                        strongest_metric = corr_df.iloc[0]['Métrica Social']
+                        strongest_col = [col for col in social_cols if strongest_metric.lower().replace(' ', '_') in col.lower()][0]
+                        
+                        st.markdown(f"### Relação Detalhada: {strongest_metric} vs. Audiência")
+                        
+                        fig_scatter = px.scatter(
+                            valid_social_data,
+                            x=strongest_col,
+                            y=tv_col,
+                            trendline="ols",
+                            labels={
+                                strongest_col: strongest_metric,
+                                tv_col: 'Audiência TV Globo (cov%)'
+                            },
+                            title=f'Relação entre {strongest_metric} e Audiência TV Globo'
+                        )
+                        
+                        st.plotly_chart(fig_scatter, use_container_width=True)
+                        
+                        # Add insight about relationship
+                        strongest_corr = corr_df.iloc[0]['Correlação']
+                        
+                        if abs(strongest_corr) > 0.3:
+                            if strongest_corr > 0:
+                                st.success(f"""
+                                **Correlação Positiva Significativa:** O aumento no {strongest_metric} está associado a um 
+                                aumento na audiência da TV Globo (correlação: {strongest_corr:.2f}).
+                                
+                                Isso sugere que este tipo de atividade social pode estar impulsionando telespectadores 
+                                para assistir à programação da Globo, possivelmente indicando engajamento em "segunda tela".
+                                """)
+                            else:
+                                st.error(f"""
+                                **Correlação Negativa Significativa:** O aumento no {strongest_metric} está associado a uma 
+                                redução na audiência da TV Globo (correlação: {strongest_corr:.2f}).
+                                
+                                Isso sugere que este tipo de atividade social pode estar competindo pela atenção dos 
+                                telespectadores, potencialmente desviando-os da programação da Globo.
+                                """)
                 
-                # Create lag analysis if not hourly (no lag analysis for hourly makes less sense)
-                if granularity != "Horário":
-                    st.markdown("### Análise de Lag: Tweets vs. Audiência")
+                # Create lag analysis if not hourly
+                if granularity != "Horário" and len(social_cols) > 0:
+                    primary_social_col = social_cols[0]
+                    display_name = primary_social_col.replace('EXTERNO_NPS_', '').replace('_', ' ').title()
+                    
+                    st.markdown("### Análise de Lag: Volume Social vs. Audiência")
                     
                     st.markdown("""
-                    Esta análise verifica se um aumento no volume de tweets precede ou sucede 
+                    Esta análise verifica se um aumento no volume social precede ou sucede 
                     um aumento na audiência TV. Um lag positivo significativo sugere que a conversação
                     social pode funcionar como um preditor da audiência futura.
                     """)
                     
                     # Create lag columns
-                    lags = [1, 2, 3, 7]  # Look at 1, 2, 3, and 7 days lag
+                    lags = [1, 2, 3, 7]  # Look at 1, 2, 3, and 7 days/weeks lag
                     lag_corrs = []
                     
                     for lag in lags:
-                        lag_col = f'tweets_lag_{lag}'
-                        valid_social_data[lag_col] = valid_social_data['EXTERNO_quantidade_tweets'].shift(lag)
+                        lag_col = f'social_lag_{lag}'
+                        valid_social_data[lag_col] = valid_social_data[primary_social_col].shift(lag)
                         
                         # Calculate correlation with audience, excluding NaN values
                         lag_data = valid_social_data.dropna(subset=[lag_col, tv_col])
@@ -655,8 +1222,9 @@ def analise_externos(df):
                         if not lag_data.empty:
                             corr = lag_data[lag_col].corr(lag_data[tv_col])
                             if not pd.isna(corr):  # Only include valid correlations
+                                unit = "dias" if granularity == "Diário" else "semanas"
                                 lag_corrs.append({
-                                    'Lag (dias)': lag,
+                                    f'Lag ({unit})': lag,
                                     'Correlação': corr
                                 })
                     
@@ -665,20 +1233,33 @@ def analise_externos(df):
                         lag_df = pd.DataFrame(lag_corrs)
                         
                         # Create bar chart
+                        unit = "dias" if granularity == "Diário" else "semanas"
                         fig_lag = px.bar(
                             lag_df,
-                            x='Lag (dias)',
+                            x=f'Lag ({unit})',
                             y='Correlação',
-                            title='Correlação entre Volume de Tweets (com lag) e Audiência TV',
+                            title=f'Correlação entre Volume Social (com lag) e Audiência TV Globo',
                             labels={
-                                'Lag (dias)': 'Tweets Defasados (dias)',
-                                'Correlação': 'Correlação com Audiência TV'
+                                f'Lag ({unit})': f'Volume Social Defasado ({unit})',
+                                'Correlação': 'Correlação com Audiência TV Globo'
                             },
                             color='Correlação',
                             color_continuous_scale=['red', 'yellow', 'green']
                         )
                         
                         st.plotly_chart(fig_lag, use_container_width=True)
+                        
+                        # Generate insights based on lag analysis
+                        max_lag_corr = max(lag_df['Correlação'])
+                        max_lag = lag_df.loc[lag_df['Correlação'].idxmax(), f'Lag ({unit})']
+                        
+                        if abs(max_lag_corr) > 0.3:
+                            direction = "positiva" if max_lag_corr > 0 else "negativa"
+                            effect = "preditor" if max_lag_corr > 0 else "indicador de possível queda"
+                            
+                            st.success(f"**Efeito Temporal:** A correlação {direction} mais forte ({max_lag_corr:.2f}) "
+                                    f"ocorre com {max_lag} {unit} de defasagem, sugerindo que o volume social "
+                                    f"pode ser um {effect} da audiência TV Globo futura.")
                 else:
                     # For hourly analysis, provide insight about real-time social engagement
                     st.markdown("### Análise de Engajamento Social em Tempo Real")
@@ -689,84 +1270,331 @@ def analise_externos(df):
                     em que estão assistindo TV, o que pode indicar o uso de "segunda tela" ou conversação social
                     sobre os programas em andamento.
                     """)
-                
-                # Generate insights based on correlation
-                st.markdown("### Insights sobre Volume Social")
-                
-                # Direct correlation insight
-                if not pd.isna(tweets_corr):
-                    if abs(tweets_corr) > 0.3:
-                        direction = "positiva" if tweets_corr > 0 else "negativa"
-                        relation = "aumentam juntos" if tweets_corr > 0 else "têm relação inversa"
+                    
+                    # Analyze correlation during prime time vs other times for hourly data
+                    if granularity == "Horário" and len(social_cols) > 0:
+                        primary_social_col = social_cols[0]
                         
-                        if granularity == "Horário":
-                            st.info(f"**Correlação {direction}:** A correlação de {tweets_corr:.2f} entre volume de tweets e audiência por hora "
-                                f"sugere que estas métricas {relation}. Isso pode indicar que {'os espectadores estão usando as redes sociais como segunda tela durante os programas' if tweets_corr > 0 else 'maior atividade nas redes sociais pode desviar atenção da TV em horários específicos'}.")
-                        else:
-                            st.info(f"**Correlação {direction}:** A correlação de {tweets_corr:.2f} entre volume de tweets e audiência "
-                                f"sugere que estas métricas {relation}. Isso pode indicar que {'programas mais assistidos geram mais conversação social' if tweets_corr > 0 else 'maior atividade nas redes sociais pode desviar atenção da TV'}.")
-                
-                # If we have lag analysis, show those insights
-                if granularity != "Horário" and 'lag_corrs' in locals() and lag_corrs:
-                    max_lag_corr = max(lag_corrs, key=lambda x: abs(x['Correlação']))
-                    
-                    if abs(max_lag_corr['Correlação']) > 0.3:
-                        direction = "positiva" if max_lag_corr['Correlação'] > 0 else "negativa"
-                        effect = "preditor" if max_lag_corr['Correlação'] > 0 else "indicador de possível queda"
+                        prime_time_hours = list(range(19, 23))  # 7pm to 10pm
                         
-                        st.success(f"**Efeito Temporal:** A correlação {direction} mais forte ({max_lag_corr['Correlação']:.2f}) "
-                                f"ocorre com {max_lag_corr['Lag (dias)']} dia(s) de defasagem, sugerindo que o volume de tweets "
-                                f"pode ser um {effect} da audiência TV futura.")
-                
-                # Hourly specific insight
-                if granularity == "Horário":
-                    # Analyze correlation during prime time vs other times
-                    prime_time_hours = list(range(19, 23))  # 7pm to 10pm
-                    
-                    prime_df = valid_social_data[valid_social_data['data_hora'].dt.hour.isin(prime_time_hours)]
-                    non_prime_df = valid_social_data[~valid_social_data['data_hora'].dt.hour.isin(prime_time_hours)]
-                    
-                    if not prime_df.empty and not non_prime_df.empty:
-                        prime_corr = prime_df['EXTERNO_quantidade_tweets'].corr(prime_df[tv_col])
-                        non_prime_corr = non_prime_df['EXTERNO_quantidade_tweets'].corr(non_prime_df[tv_col])
+                        prime_df = valid_social_data[valid_social_data['data_hora'].dt.hour.isin(prime_time_hours)]
+                        non_prime_df = valid_social_data[~valid_social_data['data_hora'].dt.hour.isin(prime_time_hours)]
                         
-                        if not pd.isna(prime_corr) and not pd.isna(non_prime_corr) and abs(prime_corr - non_prime_corr) > 0.2:
-                            stronger = "horário nobre" if abs(prime_corr) > abs(non_prime_corr) else "fora do horário nobre"
-                            st.success(f"**Diferença por Horário:** A correlação entre tweets e audiência é mais forte durante o {stronger} "
-                                    f"({prime_corr:.2f} vs {non_prime_corr:.2f}), sugerindo que "
-                                    f"{'o comportamento de segunda tela é mais prevalente no horário nobre' if stronger == 'horário nobre' else 'o uso de redes sociais durante o dia tem impacto maior na audiência fora do horário nobre'}.")
-                
-                # Quantification insight
-                if not pd.isna(tweets_corr) and abs(tweets_corr) > 0.3:
-                    # Fit a simple linear regression model
-                    X = sm.add_constant(valid_social_data['EXTERNO_quantidade_tweets'])
-                    y = valid_social_data[tv_col]
-                    model = sm.OLS(y, X).fit()
-                    
-                    # Get coefficient to quantify impact
-                    coef = model.params[1]
-                    
-                    if abs(coef) > 0.001:  # Only show if effect size is meaningful
-                        direction = "aumento" if coef > 0 else "redução"
-                        
-                        qty_text = "por hora" if granularity == "Horário" else "por dia" if granularity == "Diário" else "por semana"
-                        st.info(f"**Quantificação do Impacto:** A cada 1000 tweets adicionais {qty_text}, observa-se {direction} de "
-                            f"{abs(coef*1000):.3f} pontos percentuais na audiência TV.")
+                        if not prime_df.empty and not non_prime_df.empty:
+                            prime_corr = prime_df[primary_social_col].corr(prime_df[tv_col])
+                            non_prime_corr = non_prime_df[primary_social_col].corr(non_prime_df[tv_col])
+                            
+                            if not pd.isna(prime_corr) and not pd.isna(non_prime_corr):
+                                stronger = "horário nobre" if abs(prime_corr) > abs(non_prime_corr) else "fora do horário nobre"
+                                
+                                st.success(f"**Diferença por Horário:** A correlação entre volume social e audiência da Globo é mais forte durante o {stronger} "
+                                        f"({prime_corr:.2f} vs {non_prime_corr:.2f}), sugerindo que "
+                                        f"{'o comportamento de segunda tela é mais prevalente no horário nobre' if stronger == 'horário nobre' else 'o uso de redes sociais durante o dia tem impacto maior na audiência fora do horário nobre'}.")
             else:
                 st.warning("Dados insuficientes para análise de volume social no período selecionado.")
         else:
-            st.warning("Dados sobre volume de tweets (EXTERNO_quantidade_tweets) não estão disponíveis.")
+            st.warning("Dados sobre volume social não estão disponíveis.")
 
-    # 8. Final notes - always show
+    ######################################
+    # 8. Summary Analysis Tab            #
+    ######################################
+    with tabs[5]:
+        st.subheader("Resumo dos Insights")
+        
+        st.markdown("""
+        Esta seção consolida os principais insights de todas as categorias analisadas,
+        destacando os fatores externos que mais impactam a audiência da TV Globo.
+        """)
+        
+        if tv_col:
+            # Collect all relevant columns for correlation analysis
+            relevant_cols = []
+            relevant_cols.extend([col for col in selected_df.columns if col.startswith('EXTERNO_ECONOMICO_')])
+            relevant_cols.extend([col for col in selected_df.columns if col.startswith('EXTERNO_GRADE_')])
+            relevant_cols.extend([col for col in selected_df.columns if col.startswith('EXTERNO_ISOLADO_')])
+            relevant_cols.extend([col for col in selected_df.columns if col.startswith('EXTERNO_NPS_')])
+            
+            if relevant_cols:
+                # Calculate correlation with audience metric
+                correlations = {}
+                
+                for col in relevant_cols:
+                    valid_data = selected_df.dropna(subset=[col, tv_col])
+                    if not valid_data.empty and valid_data[col].std() > 0:  # Ensure there's variation
+                        corr = valid_data[col].corr(valid_data[tv_col])
+                        if not pd.isna(corr):
+                            correlations[col] = corr
+                
+                if correlations:
+                    # Convert to DataFrame
+                    corr_df = pd.DataFrame({
+                        'Fator': list(correlations.keys()),
+                        'Correlação': list(correlations.values()),
+                        'Força': [abs(c) for c in correlations.values()]
+                    })
+                    
+                    # Add category
+                    def categorize(factor):
+                        if factor.startswith('EXTERNO_ECONOMICO_'):
+                            return 'Indicador Econômico'
+                        elif factor.startswith('EXTERNO_GRADE_RECORRENTE_'):
+                            parts = factor.split('_')
+                            if len(parts) >= 5:
+                                broadcaster = parts[4]
+                                if broadcaster == "GLOBO":
+                                    return 'Programa Globo'
+                                else:
+                                    return 'Programa Concorrente'
+                            return 'Programa Recorrente'
+                        elif factor.startswith('EXTERNO_GRADE_GENERO_'):
+                            parts = factor.split('_')
+                            if len(parts) >= 4:
+                                broadcaster = parts[3]
+                                if broadcaster == "GLOBO":
+                                    return 'Gênero Globo'
+                                else:
+                                    return 'Gênero Concorrente'
+                            return 'Gênero de Programação'
+                        elif factor.startswith('EXTERNO_ISOLADO_'):
+                            return 'Evento Isolado'
+                        elif factor.startswith('EXTERNO_NPS_'):
+                            return 'Volume Social'
+                        else:
+                            return 'Outros'
+                    
+                    corr_df['Categoria'] = corr_df['Fator'].apply(categorize)
+                    
+                    # Clean up factor names for display
+                    def clean_factor_name(factor):
+                        if factor.startswith('EXTERNO_ECONOMICO_'):
+                            return factor.replace('EXTERNO_ECONOMICO_', '').replace('_', ' ').title()
+                        elif factor.startswith('EXTERNO_GRADE_RECORRENTE_'):
+                            parts = factor.split('_')
+                            if len(parts) >= 6:
+                                program = parts[4]
+                                broadcaster = parts[3]
+                                return f"{program} ({broadcaster})"
+                            return factor.replace('EXTERNO_GRADE_RECORRENTE_', '')
+                        elif factor.startswith('EXTERNO_GRADE_GENERO_'):
+                            parts = factor.split('_')
+                            if len(parts) >= 5:
+                                broadcaster = parts[3]
+                                genre = parts[4]
+                                return f"{genre} ({broadcaster})"
+                            return factor.replace('EXTERNO_GRADE_GENERO_', '')
+                        elif factor.startswith('EXTERNO_ISOLADO_'):
+                            return factor.replace('EXTERNO_ISOLADO_', '').replace('_', ' ')
+                        elif factor.startswith('EXTERNO_NPS_'):
+                            return factor.replace('EXTERNO_NPS_', '').replace('_', ' ').title()
+                        else:
+                            return factor
+                    
+                    corr_df['Fator Formatado'] = corr_df['Fator'].apply(clean_factor_name)
+                    
+                    # Add relationship to Globo
+                    def determine_relationship(row):
+                        if row['Categoria'] in ['Programa Concorrente', 'Gênero Concorrente']:
+                            if row['Correlação'] < 0:
+                                return "Rouba audiência da Globo"
+                            else:
+                                return "Não compete com Globo"
+                        elif row['Categoria'] in ['Programa Globo', 'Gênero Globo']:
+                            if row['Correlação'] > 0:
+                                return "Aumenta audiência da Globo"
+                            else:
+                                return "Reduz audiência da Globo"
+                        else:
+                            return "Correlação Neutra"
+                    
+                    corr_df['Relação com Globo'] = corr_df.apply(determine_relationship, axis=1)
+                    
+                    # Sort by absolute correlation strength
+                    corr_df = corr_df.sort_values('Força', ascending=False)
+                    
+                    # Display top factors overall
+                    st.markdown("### Fatores Externos com Maior Impacto na Audiência da Globo")
+                    
+                    # Take top 10 overall
+                    top_overall = corr_df.head(10)
+                    
+                    # Create a color map based on relationship to Globo
+                    relationship_colors = {
+                        "Rouba audiência da Globo": "red",
+                        "Não compete com Globo": "lightblue",
+                        "Aumenta audiência da Globo": "green",
+                        "Reduz audiência da Globo": "orange",
+                        "Correlação Neutra": "gray"
+                    }
+                    
+                    fig_top = px.bar(
+                        top_overall,
+                        x='Fator Formatado',
+                        y='Correlação',
+                        color='Relação com Globo',
+                        text=top_overall['Correlação'].apply(lambda x: f"{x:.2f}"),
+                        title='Top 10 Fatores Externos por Correlação com Audiência da TV Globo',
+                        color_discrete_map=relationship_colors
+                    )
+                    
+                    fig_top.update_layout(
+                        xaxis_title='Fator Externo',
+                        yaxis_title='Correlação com Audiência TV Globo (cov%)',
+                        xaxis_tickangle=-45,
+                        yaxis=dict(zeroline=True, zerolinecolor='black', zerolinewidth=1)
+                    )
+                    
+                    st.plotly_chart(fig_top, use_container_width=True)
+                    
+                    # Create special section for competition analysis
+                    st.markdown("### Análise de Competição: Quem 'Rouba' Audiência da Globo?")
+                    
+                    competition_df = corr_df[
+                        (corr_df['Categoria'].isin(['Programa Concorrente', 'Gênero Concorrente'])) & 
+                        (corr_df['Correlação'] < 0)
+                    ].sort_values('Correlação', ascending=True)
+                    
+                    if not competition_df.empty:
+                        top_competitors = competition_df.head(5)
+                        
+                        fig_comp = px.bar(
+                            top_competitors,
+                            x='Fator Formatado',
+                            y='Correlação',
+                            text=top_competitors['Correlação'].apply(lambda x: f"{x:.2f}"),
+                            title='Top 5 Programações Concorrentes que Mais "Roubam" Audiência da Globo',
+                            color='Categoria',
+                            color_discrete_map={"Programa Concorrente": "red", "Gênero Concorrente": "darkred"}
+                        )
+                        
+                        fig_comp.update_layout(
+                            xaxis_title='Programação Concorrente',
+                            yaxis_title='Correlação com Audiência Globo',
+                            xaxis_tickangle=-45
+                        )
+                        
+                        st.plotly_chart(fig_comp, use_container_width=True)
+                        
+                        # Create insight about competition
+                        top_competitor = top_competitors.iloc[0]
+                        
+                        st.error(f"""
+                        **Competidor Mais Forte:** {top_competitor['Fator Formatado']} tem a correlação negativa mais 
+                        forte ({top_competitor['Correlação']:.2f}) com a audiência da Globo.
+                        
+                        Isso indica que este conteúdo concorrente está efetivamente atraindo telespectadores 
+                        que poderiam estar assistindo à Globo, representando uma ameaça competitiva significativa.
+                        """)
+                    else:
+                        st.info("Não foram identificados competidores significativos com correlação negativa.")
+                    
+                    # Display top factors by category
+                    st.markdown("### Análise por Categoria de Fator Externo")
+                    
+                    # Create columns for the top factor in each category
+                    categories = corr_df['Categoria'].unique()
+                    cols = st.columns(min(4, len(categories)))
+                    
+                    for i, category in enumerate(categories):
+                        # Get top factor in this category
+                        top_in_category = corr_df[corr_df['Categoria'] == category].iloc[0] if not corr_df[corr_df['Categoria'] == category].empty else None
+                        
+                        if top_in_category is not None:
+                            with cols[i % 4]:
+                                direction = "positiva" if top_in_category['Correlação'] > 0 else "negativa"
+                                
+                                st.metric(
+                                    label=f"Top em {category}",
+                                    value=top_in_category['Fator Formatado'],
+                                    delta=f"{top_in_category['Correlação']:.2f} ({direction})"
+                                )
+                    
+                    # Generate key insights
+                    st.markdown("### Insights Estratégicos")
+                    
+                    # Economic insight
+                    eco_df = corr_df[corr_df['Categoria'] == 'Indicador Econômico']
+                    if not eco_df.empty:
+                        top_eco = eco_df.iloc[0]
+                        direction = "positiva" if top_eco['Correlação'] > 0 else "negativa"
+                        impact = "aumento" if top_eco['Correlação'] > 0 else "redução"
+                        
+                        st.info(f"""
+                        **Economia:** O indicador {top_eco['Fator Formatado']} tem a correlação {direction} mais forte ({top_eco['Correlação']:.2f}) 
+                        com a audiência da Globo, sugerindo que seu {impact} está associado a {'maior' if top_eco['Correlação'] > 0 else 'menor'} 
+                        consumo de TV Linear Globo.
+                        
+                        **Implicação:** Monitorar este indicador pode ajudar a prever flutuações na audiência e adaptar estratégias comerciais 
+                        e de programação de acordo.
+                        """)
+                    
+                    # Globo programs
+                    globo_progs = corr_df[corr_df['Categoria'] == 'Programa Globo']
+                    if not globo_progs.empty:
+                        top_prog = globo_progs.iloc[0]
+                        
+                        st.success(f"""
+                        **Programação Própria:** O programa {top_prog['Fator Formatado']} tem o maior impacto positivo 
+                        na audiência geral da Globo (correlação: {top_prog['Correlação']:.2f}).
+                        
+                        **Implicação:** Este tipo de conteúdo representa um ponto forte da emissora e deve ser 
+                        potencializado em termos de investimento e marketing.
+                        """)
+                    
+                    # Competition threat
+                    competitors = corr_df[(corr_df['Categoria'].isin(['Programa Concorrente', 'Gênero Concorrente'])) & (corr_df['Correlação'] < 0)]
+                    if not competitors.empty:
+                        top_threat = competitors.iloc[0]
+                        
+                        st.error(f"""
+                        **Ameaça Competitiva:** {top_threat['Fator Formatado']} é o conteúdo concorrente que mais 
+                        reduz a audiência da Globo (correlação: {top_threat['Correlação']:.2f}).
+                        
+                        **Implicação:** Este é um ponto de vulnerabilidade da Globo. Considerar estratégias como 
+                        contraprogramação ou fortalecimento de conteúdos similares no portfólio próprio pode ser necessário.
+                        """)
+                    
+                    # Generate an overall business recommendation
+                    st.markdown("### Recomendação para o Negócio")
+                    
+                    # Organize factors by correlation type
+                    pos_factors = corr_df[corr_df['Correlação'] > 0.3].head(3)
+                    neg_factors = corr_df[(corr_df['Correlação'] < -0.3) & (corr_df['Categoria'].isin(['Programa Concorrente', 'Gênero Concorrente']))].head(3)
+                    
+                    pos_factors_list = ", ".join([f"{row['Fator Formatado']} ({row['Correlação']:.2f})" for _, row in pos_factors.iterrows()])
+                    neg_factors_list = ", ".join([f"{row['Fator Formatado']} ({row['Correlação']:.2f})" for _, row in neg_factors.iterrows()])
+                    
+                    st.success(f"""
+                    **Estratégia Baseada nos Dados:**
+                    
+                    Com base na análise de correlação entre fatores externos e audiência da TV Globo, recomendamos:
+                    
+                    1. **Potencializar fatores positivos:** Aproveitar e amplificar a presença de {pos_factors_list}, que demonstraram forte correlação positiva com a audiência da Globo.
+                    
+                    2. **Mitigar ameaças competitivas:** Desenvolver estratégias de contraprogramação para {neg_factors_list}, que estão efetivamente "roubando" audiência da Globo.
+                    
+                    3. **Monitorar continuamente:** Estabelecer um sistema de monitoramento contínuo destes fatores para antecipar flutuações na audiência e adaptar a programação e estratégias de marketing de acordo.
+                    
+                    4. **Adaptar ao contexto econômico:** Considerando os indicadores econômicos com maior correlação, ajustar a grade de programação e esforços comerciais para maximizar a audiência conforme as condições do mercado.
+                    """)
+                else:
+                    st.warning("Não foi possível calcular correlações significativas com os dados disponíveis.")
+            else:
+                st.warning("Não foram encontrados fatores externos para análise.")
+        else:
+            st.warning("Dados de audiência TV não estão disponíveis para análise.")
+
+    # 9. Final notes - always show
     with st.expander("Informações sobre a análise de fatores externos"):
         st.markdown("""
         ### Fonte dos Dados
 
         **Indicadores Econômicos**: Os dados econômicos são obtidos de fontes oficiais como o Banco Central do Brasil e o IBGE.
 
-        **Eventos**: Os eventos são identificados e categorizados manualmente com base em um calendário de eventos relevantes.
+        **Grade de Programação**: Os dados da grade são obtidos a partir das informações oficiais de programação de cada emissora.
 
-        **Volume Social**: Os dados de volume de tweets são obtidos via API do Twitter/X, com foco em termos relacionados à mídia e entretenimento.
+        **Eventos Isolados**: Eventos pontuais identificados e categorizados manualmente com base em calendários e notícias relevantes.
+
+        **Volume Social**: Os dados de volume social são obtidos via APIs de plataformas de redes sociais, com foco em termos relacionados à mídia e entretenimento.
 
         ### Considerações Metodológicas
 
@@ -774,7 +1602,7 @@ def analise_externos(df):
 
         2. **Limitações temporais**: A análise considera apenas o período coberto pelos dados disponíveis, que pode não representar todos os ciclos econômicos ou sazonalidades.
 
-        3. **Simplificação de eventos**: Eventos são tratados como variáveis binárias (ocorreram ou não), sem considerar sua intensidade ou duração específica.
+        3. **Competição por audiência**: Correlações negativas entre programas de emissoras concorrentes e a audiência da Globo indicam potencial "roubo" de audiência, mas é importante considerar que o universo total de telespectadores não é fixo.
 
         4. **Modelo linear**: O modelo explicativo integrado assume relações lineares entre fatores externos e audiência, o que pode não capturar completamente relações mais complexas.
         

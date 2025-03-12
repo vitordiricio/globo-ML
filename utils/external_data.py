@@ -18,7 +18,7 @@ def join_tweets(tabela_mae):
     tweets['data_hora'] = pd.to_datetime(tweets['Data'] + ' ' + tweets['Hora'], format='%d/%m/%y %H:%M')
     tweets['data_hora'] = tweets['data_hora'].dt.round('h')
     tweets = tweets[(tweets['data_hora'] >= '2023-01-01') & (tweets['data_hora'] < '2025-01-01')]
-    tweets = tweets.groupby('data_hora').size().reset_index(name='EXTERNO_quantidade_tweets')
+    tweets = tweets.groupby('data_hora').size().reset_index(name='EXTERNO_NPS_quantidade_tweets')
 
     tweets = fill_hourly_gaps(tweets, 'data_hora')
 
@@ -123,7 +123,7 @@ def join_grade_external_data(tabela_mae, eventos=None):
             
             # Processar por emissora
             for emissora, emissora_programs in evento_programs.groupby('emissora'):
-                col_name = f"EXTERNO_GRADE_{evento_key}_{emissora}_ON"
+                col_name = f"EXTERNO_GRADE_RECORRENTE_{emissora}_{evento_key}_ON"
                 
                 # Obter todos os timestamps para esta combinação evento-emissora
                 event_timestamps = set()
@@ -379,7 +379,7 @@ def fetch_all_bcb_economic_indicators(df=None, date_column='data_hora', start_da
     # Processa cada série
     for (code, name), temp_df in series_data.items():
         # Adiciona prefixo ao nome da coluna
-        prefixed_name = f"EXTERNO_{name}"
+        prefixed_name = f"EXTERNO_ECONOMICO_{name}"
         
         if temp_df.empty:
             dados_externos[prefixed_name] = None
