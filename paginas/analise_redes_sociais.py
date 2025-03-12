@@ -126,23 +126,24 @@ def analise_redes_sociais(df):
         versus retorno (métricas de performance) e a correlação com a audiência da TV Linear.
         """)
         
-        # Platform selection with "Select All" checkbox
-        select_all_platforms = st.checkbox("Selecionar todas as plataformas", value=True)
+        # Platform selection (Gives user flexibility to focus on specific platforms)
+        all_option = ["Todas as redes sociais"]
+        platform_options = all_option + platforms
         
-        if select_all_platforms:
+        selected_platforms_tab1 = st.multiselect(
+            "Selecione as plataformas para análise:",
+            options=platform_options,
+            default=all_option
+        )
+        
+        # Handle "Todas as redes sociais" option
+        if "Todas as redes sociais" in selected_platforms_tab1:
             selected_platforms = platforms
+        elif not selected_platforms_tab1:
+            st.warning("Por favor, selecione pelo menos uma plataforma para análise.")
+            return
         else:
-            selected_platforms_tab1 = st.multiselect(
-                "Selecione as plataformas para análise:",
-                options=platforms,
-                default=platforms
-            )
-            
-            if not selected_platforms_tab1:
-                st.warning("Por favor, selecione pelo menos uma plataforma para análise.")
-                return
-            else:
-                selected_platforms = selected_platforms_tab1
+            selected_platforms = selected_platforms_tab1
         
         # For each platform, calculate key metrics based on selected metric type
         platform_metrics = []
@@ -376,42 +377,44 @@ def analise_redes_sociais(df):
         identificando quais geram maior impacto na audiência da TV Linear.
         """)
         
-        # Platform selection with "Select All" checkbox
-        select_all_platforms_tab2 = st.checkbox("Selecionar todas as plataformas", value=True, key="select_all_platforms_tab2")
+        # Reuse platform filter from Tab 1
+        all_platforms_option = ["Todas as redes sociais"]
+        platform_options_tab2 = all_platforms_option + platforms
         
-        if select_all_platforms_tab2:
+        selected_platforms_tab2 = st.multiselect(
+            "Selecione as plataformas para análise:",
+            options=platform_options_tab2,
+            default=all_platforms_option,
+            key="platforms_tab2"
+        )
+        
+        # Handle "Todas as redes sociais" option
+        if "Todas as redes sociais" in selected_platforms_tab2:
             selected_platforms_tab2_filtered = platforms
+        elif not selected_platforms_tab2:
+            st.warning("Por favor, selecione pelo menos uma plataforma para análise.")
+            return
         else:
-            selected_platforms_tab2 = st.multiselect(
-                "Selecione as plataformas para análise:",
-                options=platforms,
-                default=platforms,
-                key="platforms_tab2"
-            )
-            
-            if not selected_platforms_tab2:
-                st.warning("Por favor, selecione pelo menos uma plataforma para análise.")
-                return
-            else:
-                selected_platforms_tab2_filtered = selected_platforms_tab2
+            selected_platforms_tab2_filtered = selected_platforms_tab2
         
-        # Account selection with "Select All" checkbox
-        select_all_accounts = st.checkbox("Selecionar todas as contas", value=True)
+        # Account selection with "All accounts" option
+        all_accounts_option = ["Todas as contas"]
+        account_options = all_accounts_option + accounts
         
-        if select_all_accounts:
+        selected_accounts_list = st.multiselect(
+            "Selecione as contas para análise:",
+            options=account_options,
+            default=all_accounts_option
+        )
+        
+        # Handle "Todas as contas" option
+        if "Todas as contas" in selected_accounts_list:
             selected_accounts = accounts
+        elif not selected_accounts_list:
+            st.warning("Por favor, selecione pelo menos uma conta para análise.")
+            return
         else:
-            selected_accounts_list = st.multiselect(
-                "Selecione as contas para análise:",
-                options=accounts,
-                default=accounts[0:5] if len(accounts) > 5 else accounts
-            )
-            
-            if not selected_accounts_list:
-                st.warning("Por favor, selecione pelo menos uma conta para análise.")
-                return
-            else:
-                selected_accounts = selected_accounts_list
+            selected_accounts = selected_accounts_list
         
         # For each account, calculate key metrics based on selected metric type
         account_metrics = []

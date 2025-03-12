@@ -184,6 +184,15 @@ def analise_linear_vs_concorrentes(df):
             # Calculate correlation and market share
             corr = selected_df[globo_col].corr(selected_df['Concorrentes (Média)'])
             
+            # Calculate correlation on first differences (stationary series)
+            # Create differenced series and drop NaN values
+            globo_diff = selected_df[globo_col].diff().dropna()
+            competitors_diff = selected_df['Concorrentes (Média)'].diff().dropna()
+            
+            # Ensure indices match after dropping NaN values
+            common_index = globo_diff.index.intersection(competitors_diff.index)
+            corr_stationary = globo_diff.loc[common_index].corr(competitors_diff.loc[common_index])
+            
             globo_avg = selected_df[globo_col].mean()
             competitors_avg = selected_df['Concorrentes (Média)'].mean()
             total_avg = globo_avg + competitors_avg
@@ -191,7 +200,7 @@ def analise_linear_vs_concorrentes(df):
             if total_avg > 0:
                 globo_share = (globo_avg / total_avg) * 100
                 
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 
                 with col1:
                     st.metric(
@@ -201,6 +210,13 @@ def analise_linear_vs_concorrentes(df):
                     )
                 
                 with col2:
+                    st.metric(
+                        "Correlação Globo vs Concorrentes (Estacionário)",
+                        f"{corr_stationary:.2f}",
+                        help="Correlação calculada após aplicar a primeira diferença nas séries temporais, removendo tendências e sazonalidades."
+                    )
+                
+                with col3:
                     st.metric(
                         "Participação Média da Globo",
                         f"{globo_share:.1f}%",
@@ -234,6 +250,21 @@ def analise_linear_vs_concorrentes(df):
                     st.info("""
                     **Correlação forte negativa**: Existe forte competição direta entre Globo e concorrentes. Quando um ganha audiência,
                     o outro perde, sugerindo grande sobreposição de público-alvo e conteúdo substituto.
+                    """)
+                
+                # Add interpretation for stationary correlation
+                st.markdown("### Análise da Correlação Estacionária")
+                if abs(corr - corr_stationary) > 0.3:
+                    st.info(f"""
+                    **Diferença significativa entre correlações**: A correlação das séries estacionárias ({corr_stationary:.2f}) 
+                    é bastante diferente da correlação das séries originais ({corr:.2f}), o que sugere que grande parte da 
+                    correlação original era influenciada por tendências comuns ou sazonalidade, e não por uma relação causal direta.
+                    """)
+                else:
+                    st.info(f"""
+                    **Correlações similares**: A correlação das séries estacionárias ({corr_stationary:.2f}) é semelhante à 
+                    correlação das séries originais ({corr:.2f}), o que reforça a robustez da relação identificada, indicando 
+                    que as variações de curto prazo entre Globo e concorrentes mantêm padrão similar à tendência geral.
                     """)
         else:
             st.warning("Dados insuficientes de concorrentes para criar a comparação agregada.")
@@ -292,6 +323,15 @@ def analise_linear_vs_concorrentes(df):
             # Calculate correlation between Globo and selected competitor
             corr = selected_df[globo_col].corr(selected_df[comp_col])
             
+            # Calculate correlation on first differences (stationary series)
+            # Create differenced series and drop NaN values
+            globo_diff = selected_df[globo_col].diff().dropna()
+            competitor_diff = selected_df[comp_col].diff().dropna()
+            
+            # Ensure indices match after dropping NaN values
+            common_index = globo_diff.index.intersection(competitor_diff.index)
+            corr_stationary = globo_diff.loc[common_index].corr(competitor_diff.loc[common_index])
+            
             # Calculate average metrics
             globo_avg = selected_df[globo_col].mean()
             comp_avg = selected_df[comp_col].mean()
@@ -301,7 +341,7 @@ def analise_linear_vs_concorrentes(df):
                 globo_share = (globo_avg / total_avg) * 100
                 ratio = globo_avg / comp_avg if comp_avg > 0 else float('inf')
                 
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
                     st.metric(
@@ -312,12 +352,19 @@ def analise_linear_vs_concorrentes(df):
                 
                 with col2:
                     st.metric(
+                        f"Correlação Globo vs {selected_competitor} (Estacionário)",
+                        f"{corr_stationary:.2f}",
+                        help="Correlação calculada após aplicar a primeira diferença nas séries temporais, removendo tendências e sazonalidades."
+                    )
+                
+                with col3:
+                    st.metric(
                         f"Participação da Globo vs {selected_competitor}",
                         f"{globo_share:.1f}%",
                         help=f"Percentual da Globo em relação ao total (Globo + {selected_competitor})."
                     )
                 
-                with col3:
+                with col4:
                     st.metric(
                         "Proporção Globo/Concorrente",
                         f"{ratio:.2f}x",
@@ -394,6 +441,22 @@ def analise_linear_vs_concorrentes(df):
                     st.info(f"""
                     **Correlação forte negativa**: Há uma clara relação inversa entre as audiências da Globo e do {selected_competitor},
                     indicando forte competição pelo mesmo público e conteúdos altamente substitutos.
+                    """)
+                
+                # Add interpretation for stationary correlation
+                st.markdown(f"### Análise da Correlação Estacionária com {selected_competitor}")
+                if abs(corr - corr_stationary) > 0.3:
+                    st.info(f"""
+                    **Diferença significativa entre correlações**: A correlação das séries estacionárias ({corr_stationary:.2f}) 
+                    é bastante diferente da correlação das séries originais ({corr:.2f}), o que sugere que grande parte da 
+                    correlação original era influenciada por tendências comuns ou sazonalidade, e não por uma relação causal direta 
+                    entre Globo e {selected_competitor}.
+                    """)
+                else:
+                    st.info(f"""
+                    **Correlações similares**: A correlação das séries estacionárias ({corr_stationary:.2f}) é semelhante à 
+                    correlação das séries originais ({corr:.2f}), o que reforça a robustez da relação identificada, indicando 
+                    que as variações de curto prazo entre Globo e {selected_competitor} mantêm padrão similar à tendência geral.
                     """)
             else:
                 st.warning("Dados insuficientes para calcular métricas comparativas.")
@@ -486,6 +549,9 @@ def analise_linear_vs_concorrentes(df):
     - **Correlações importantes:** Identificamos quais concorrentes apresentam maior correlação
     (positiva ou negativa) com a audiência da Globo, o que é fundamental para entender dinâmicas de mercado.
     
+    - **Correlações estacionárias:** A análise das séries temporais após aplicar a primeira diferença
+    permite entender relações mais robustas entre as emissoras, removendo o efeito de tendências comuns.
+    
     - **Equações preditivas:** Para correlações fortes, estabelecemos equações lineares que
     permitem estimar o comportamento da audiência da Globo com base em concorrentes específicos.
     
@@ -510,6 +576,9 @@ def analise_linear_vs_concorrentes(df):
         
         3. **Modelagem mais precisa:** Incluir métricas de concorrentes pode melhorar significativamente 
         a precisão de modelos preditivos para a audiência da Globo
+        
+        4. **Análise estacionária:** A correlação em séries estacionárias (após diferenciação) é essencial 
+        para eliminar relações espúrias e identificar relações causais mais confiáveis entre variáveis
         
         A separação desta análise em uma aba específica permite um foco metodológico claro, 
         facilitando tanto a interpretação dos dados quanto a aplicação dos insights em estratégias 
