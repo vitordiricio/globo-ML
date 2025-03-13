@@ -149,6 +149,33 @@ def analise_globoplay(df):
         )
         
         return fig
+    
+    # Function to create bar charts
+    def create_bar_chart(data_dict, title):
+        if not data_dict:
+            return None
+        
+        labels = list(data_dict.keys())
+        values = list(data_dict.values())
+        
+        fig = px.bar(
+            x=labels,
+            y=values,
+            title=title,
+            color=labels,
+            color_discrete_sequence=px.colors.qualitative.Set2
+        )
+        
+        fig.update_layout(
+            margin=dict(l=20, r=20, t=30, b=20),
+            height=300,
+            xaxis_title="",
+            yaxis_title="Horas Médias",
+            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+            showlegend=False  # Usually don't need a legend for a simple bar chart
+        )
+        
+        return fig
 
     # ROW 1: Assinantes vs Logados Free vs Anônimos
     st.markdown("### Usuários: Assinantes vs Logados Free vs Anônimos")
@@ -263,7 +290,7 @@ def analise_globoplay(df):
     # Third column: Average hours pie chart
     with chart_col3:
         if user_type_avg_hours:
-            avg_hours_pie = create_pie_chart(user_type_avg_hours, "Horas Médias por Usuário")
+            avg_hours_pie = create_bar_chart(user_type_avg_hours, "Horas Médias por Usuário")
             st.plotly_chart(avg_hours_pie, use_container_width=True)
 
     # Add insights for user types
@@ -387,7 +414,7 @@ def analise_globoplay(df):
     # Third column: Average hours pie chart
     with chart_col3:
         if device_type_avg_hours:
-            avg_hours_pie = create_pie_chart(device_type_avg_hours, "Horas Médias por Usuário por Dispositivo")
+            avg_hours_pie = create_bar_chart(device_type_avg_hours, "Horas Médias por Usuário por Dispositivo")
             st.plotly_chart(avg_hours_pie, use_container_width=True)
 
     # Add insights for device types
@@ -527,7 +554,7 @@ def analise_globoplay(df):
     # Third column: Average hours pie chart
     with chart_col3:
         if content_type_avg_hours:
-            avg_hours_pie = create_pie_chart(content_type_avg_hours, "Horas Médias por Usuário/Item por Tipo de Conteúdo")
+            avg_hours_pie = create_bar_chart(content_type_avg_hours, "Horas Médias por Usuário/Item por Tipo de Conteúdo")
             st.plotly_chart(avg_hours_pie, use_container_width=True)
 
     # Add insights for content types
@@ -568,98 +595,199 @@ def analise_globoplay(df):
         e valores negativos indicam relação inversa (quando um aumenta, o outro diminui).
         """)
         
-        # Create columns for correlation cards
-        corr_cols = st.columns(3)
-        
         # Row 1 - Assinantes vs Logados vs Anônimos
-        with corr_cols[0]:
-            st.subheader("Tipo de Usuário")
-            
-            # Calculate correlations
-            corr_metrics = []
+        st.subheader("Tipo de Usuário")
+        
+        # Create two columns for engagement and reach
+        user_corr_cols = st.columns(2)
+        
+        # Column 1 - Engagement correlations
+        with user_corr_cols[0]:
+            st.markdown("**Engajamento (Horas Consumidas)**")
             
             if "GP_horas_consumidas_assinantes" in selected_df.columns:
-                corr_assinantes = selected_df['GP_horas_consumidas_assinantes'].corr(selected_df['LINEAR_GLOBO_cov%'])
-                st.metric("Assinantes", f"{corr_assinantes:.2f}")
+                corr_assinantes_eng = selected_df['GP_horas_consumidas_assinantes'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Assinantes", f"{corr_assinantes_eng:.2f}")
             
             if "GP_horas_consumidas_de_logados_free" in selected_df.columns:
-                corr_logados = selected_df['GP_horas_consumidas_de_logados_free'].corr(selected_df['LINEAR_GLOBO_cov%'])
-                st.metric("Logados Free", f"{corr_logados:.2f}")
+                corr_logados_eng = selected_df['GP_horas_consumidas_de_logados_free'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Logados Free", f"{corr_logados_eng:.2f}")
             
             if "GP_horas_consumidas_de_anonimos" in selected_df.columns:
-                corr_anonimos = selected_df['GP_horas_consumidas_de_anonimos'].corr(selected_df['LINEAR_GLOBO_cov%'])
-                st.metric("Anônimos", f"{corr_anonimos:.2f}")
+                corr_anonimos_eng = selected_df['GP_horas_consumidas_de_anonimos'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Anônimos", f"{corr_anonimos_eng:.2f}")
+        
+        # Column 2 - Reach correlations
+        with user_corr_cols[1]:
+            st.markdown("**Alcance (Número de Usuários)**")
+            
+            if "GP_usuários_assinantes_" in selected_df.columns:
+                corr_assinantes_reach = selected_df['GP_usuários_assinantes_'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Assinantes", f"{corr_assinantes_reach:.2f}")
+            
+            if "GP_usuários_de_vídeo_logados_free" in selected_df.columns:
+                corr_logados_reach = selected_df['GP_usuários_de_vídeo_logados_free'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Logados Free", f"{corr_logados_reach:.2f}")
+            
+            if "GP_usuários_anonimos" in selected_df.columns:
+                corr_anonimos_reach = selected_df['GP_usuários_anonimos'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Anônimos", f"{corr_anonimos_reach:.2f}")
         
         # Row 2 - Mobile vs Outros Devices
-        with corr_cols[1]:
-            st.subheader("Tipo de Device")
+        st.subheader("Tipo de Device")
+        
+        # Create two columns for engagement and reach
+        device_corr_cols = st.columns(2)
+        
+        # Column 1 - Engagement correlations
+        with device_corr_cols[0]:
+            st.markdown("**Engajamento (Horas Consumidas)**")
             
-            # Calculate correlations
             if "GP_horas_consumidas_mobile" in selected_df.columns:
-                corr_mobile = selected_df['GP_horas_consumidas_mobile'].corr(selected_df['LINEAR_GLOBO_cov%'])
-                st.metric("Mobile", f"{corr_mobile:.2f}")
+                corr_mobile_eng = selected_df['GP_horas_consumidas_mobile'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Mobile", f"{corr_mobile_eng:.2f}")
             
             if "GP_horas_consumidas_em_demais_devices" in selected_df.columns:
-                corr_outros = selected_df['GP_horas_consumidas_em_demais_devices'].corr(selected_df['LINEAR_GLOBO_cov%'])
-                st.metric("Outros Devices", f"{corr_outros:.2f}")
+                corr_outros_eng = selected_df['GP_horas_consumidas_em_demais_devices'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Outros Devices", f"{corr_outros_eng:.2f}")
+        
+        # Column 2 - Reach correlations
+        with device_corr_cols[1]:
+            st.markdown("**Alcance (Número de Usuários)**")
+            
+            if "GP_usuários_em_mobile" in selected_df.columns:
+                corr_mobile_reach = selected_df['GP_usuários_em_mobile'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Mobile", f"{corr_mobile_reach:.2f}")
+            
+            if "GP_usuários_em_demais_devices" in selected_df.columns:
+                corr_outros_reach = selected_df['GP_usuários_em_demais_devices'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("Outros Devices", f"{corr_outros_reach:.2f}")
         
         # Row 3 - Simulcasting vs VOD
-        with corr_cols[2]:
-            st.subheader("Tipo de Conteúdo")
+        st.subheader("Tipo de Conteúdo")
+        
+        # Create two columns for engagement and reach
+        content_corr_cols = st.columns(2)
+        
+        # Column 1 - Engagement correlations
+        with content_corr_cols[0]:
+            st.markdown("**Engajamento (Horas Consumidas/Disponíveis)**")
             
-            # Calculate correlations
             if "GP_horas_consumidas_em_tvg_ao_vivo" in selected_df.columns:
-                corr_tvg = selected_df['GP_horas_consumidas_em_tvg_ao_vivo'].corr(selected_df['LINEAR_GLOBO_cov%'])
-                st.metric("TVG ao Vivo", f"{corr_tvg:.2f}")
+                corr_tvg_eng = selected_df['GP_horas_consumidas_em_tvg_ao_vivo'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("TVG ao Vivo", f"{corr_tvg_eng:.2f}")
             
             if "GP_qtd_de_horas_disponíveis_integras" in selected_df.columns:
-                corr_vod = selected_df['GP_qtd_de_horas_disponíveis_integras'].corr(selected_df['LINEAR_GLOBO_cov%'])
-                st.metric("VOD (Íntegras)", f"{corr_vod:.2f}")
+                corr_vod_eng = selected_df['GP_qtd_de_horas_disponíveis_integras'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("VOD (Íntegras)", f"{corr_vod_eng:.2f}")
+        
+        # Column 2 - Reach correlations
+        with content_corr_cols[1]:
+            st.markdown("**Alcance (Usuários/Itens)**")
+            
+            if "GP_usuários_em_tvg_ao_vivo" in selected_df.columns:
+                corr_tvg_reach = selected_df['GP_usuários_em_tvg_ao_vivo'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("TVG ao Vivo", f"{corr_tvg_reach:.2f}")
+            
+            if "GP_qtd_de_integras_publicadas" in selected_df.columns:
+                corr_vod_reach = selected_df['GP_qtd_de_integras_publicadas'].corr(selected_df['LINEAR_GLOBO_cov%'])
+                st.metric("VOD (Íntegras)", f"{corr_vod_reach:.2f}")
         
         # Add insight about correlations
-        # Find highest correlation
+        # Combine all correlation values to find the strongest one
         corr_values = []
         corr_labels = []
+        corr_types = []
         
+        # User type correlations - Engagement
         if "GP_horas_consumidas_assinantes" in selected_df.columns:
-            corr_values.append(corr_assinantes)
+            corr_values.append(corr_assinantes_eng)
             corr_labels.append("Assinantes")
+            corr_types.append("Engajamento")
         
         if "GP_horas_consumidas_de_logados_free" in selected_df.columns:
-            corr_values.append(corr_logados)
+            corr_values.append(corr_logados_eng)
             corr_labels.append("Usuários Logados Free")
+            corr_types.append("Engajamento")
         
         if "GP_horas_consumidas_de_anonimos" in selected_df.columns:
-            corr_values.append(corr_anonimos)
+            corr_values.append(corr_anonimos_eng)
             corr_labels.append("Usuários Anônimos")
+            corr_types.append("Engajamento")
         
+        # User type correlations - Reach
+        if "GP_usuários_assinantes_" in selected_df.columns:
+            corr_values.append(corr_assinantes_reach)
+            corr_labels.append("Assinantes")
+            corr_types.append("Alcance")
+        
+        if "GP_usuários_de_vídeo_logados_free" in selected_df.columns:
+            corr_values.append(corr_logados_reach)
+            corr_labels.append("Usuários Logados Free")
+            corr_types.append("Alcance")
+        
+        if "GP_usuários_anonimos" in selected_df.columns:
+            corr_values.append(corr_anonimos_reach)
+            corr_labels.append("Usuários Anônimos")
+            corr_types.append("Alcance")
+        
+        # Device type correlations - Engagement
         if "GP_horas_consumidas_mobile" in selected_df.columns:
-            corr_values.append(corr_mobile)
+            corr_values.append(corr_mobile_eng)
             corr_labels.append("Mobile")
+            corr_types.append("Engajamento")
         
         if "GP_horas_consumidas_em_demais_devices" in selected_df.columns:
-            corr_values.append(corr_outros)
+            corr_values.append(corr_outros_eng)
             corr_labels.append("Outros Dispositivos")
+            corr_types.append("Engajamento")
         
+        # Device type correlations - Reach
+        if "GP_usuários_em_mobile" in selected_df.columns:
+            corr_values.append(corr_mobile_reach)
+            corr_labels.append("Mobile")
+            corr_types.append("Alcance")
+        
+        if "GP_usuários_em_demais_devices" in selected_df.columns:
+            corr_values.append(corr_outros_reach)
+            corr_labels.append("Outros Dispositivos")
+            corr_types.append("Alcance")
+        
+        # Content type correlations - Engagement
         if "GP_horas_consumidas_em_tvg_ao_vivo" in selected_df.columns:
-            corr_values.append(corr_tvg)
+            corr_values.append(corr_tvg_eng)
             corr_labels.append("TVG ao Vivo")
+            corr_types.append("Engajamento")
         
         if "GP_qtd_de_horas_disponíveis_integras" in selected_df.columns:
-            corr_values.append(corr_vod)
+            corr_values.append(corr_vod_eng)
             corr_labels.append("VOD (Íntegras)")
+            corr_types.append("Engajamento")
         
-        if corr_values and corr_labels:
+        # Content type correlations - Reach
+        if "GP_usuários_em_tvg_ao_vivo" in selected_df.columns:
+            corr_values.append(corr_tvg_reach)
+            corr_labels.append("TVG ao Vivo")
+            corr_types.append("Alcance")
+        
+        if "GP_qtd_de_integras_publicadas" in selected_df.columns:
+            corr_values.append(corr_vod_reach)
+            corr_labels.append("VOD (Íntegras)")
+            corr_types.append("Alcance")
+        
+        # Find the strongest correlation (by absolute value)
+        if corr_values and corr_labels and corr_types:
             max_corr_idx = corr_values.index(max(corr_values, key=abs))
             max_corr_value = corr_values[max_corr_idx]
             max_corr_label = corr_labels[max_corr_idx]
+            max_corr_type = corr_types[max_corr_idx]
             
             relationship_type = "complementar" if max_corr_value > 0 else "inversa"
             
             st.warning(f"""
             **Insight sobre correlações:**
             
-            📊 A mais forte correlação encontrada é entre **{max_corr_label}** e TV Linear: **{max_corr_value:.2f}**
+            📊 A mais forte correlação encontrada é entre **{max_corr_label} ({max_corr_type})** e TV Linear: **{max_corr_value:.2f}**
             
             🔍 **Interpretação:** Existe uma relação **{relationship_type}** significativa, o que sugere que {
                 "o consumo em streaming e TV Linear crescem juntos, reforçando-se mutuamente." 
@@ -673,7 +801,6 @@ def analise_globoplay(df):
                 "Considerar estratégias específicas para cada plataforma, reconhecendo que atendem a momentos ou necessidades diferentes do consumidor."
             }
             """)
-
     # Visualization Section
     st.subheader("Visualizações")
 

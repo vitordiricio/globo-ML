@@ -10,7 +10,7 @@ from utils.graphs_views import (
     plot_feature_importance
 )
 
-from utils.data_processing import group_and_filter_by_date
+from utils.data_processing import group_and_filter_by_date, prepare_features_for_modeling
 
 from utils.ml_models import AVAILABLE_MODELS
 

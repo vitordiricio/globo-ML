@@ -65,7 +65,7 @@ def main():
                         'FUTEBOL' : ['FUTEBOL NOT', 'FUTEBOL MAT', 'FUTEBOL VES', 'FUTEBOL MAD'],
                         'BBB' : ['BIG BROTHER BRASIL'],
                         'AFAZENDA' : ['A FAZENDA'],
-                        'OLIMPIADAS' : ['JOGOS OLIMPICOS MAT', 'JOGOS OLIMPICOS VES', 'JOGOS OLIMPICOS MAD']
+                        'OLIMPIADAS' : ['JOGOS OLIMPICOS MAT', 'JOGOS OLIMPICOS VES', 'JOGOS OLIMPICOS MAD'],
                     }
                     df_merged = join_grade_external_data(df_merged, eventos=eventos)
                     df_merged = join_tweets(df_merged)

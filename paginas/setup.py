@@ -243,7 +243,7 @@ def setup_page():
                 st.success("✅ Todos os arquivos foram processados e mesclados com sucesso!")
                 
                 st.subheader("Pré-visualização dos Dados Mesclados")
-                st.dataframe(df_merged.head(5), hide_index=True)
+                st.dataframe(df_merged, hide_index=True)
                 
                 # Show information about the dataset
                 st.subheader("Informações do Dataset")
@@ -260,7 +260,7 @@ def setup_page():
         df_merged = st.session_state.df_merged
         
         st.subheader("Pré-visualização dos Dados Mesclados")
-        st.dataframe(df_merged.head(5), hide_index=True)
+        st.dataframe(df_merged, hide_index=True)
         
         # Show information about the dataset
         st.subheader("Informações do Dataset")

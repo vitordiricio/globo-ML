@@ -103,12 +103,11 @@ def analise_redes_sociais(df):
     accounts = []
     for col in rs_cols:
         parts = col.split('_')
-        if len(parts) > 2:
-            if "CANAIS" in col:  # RS_CANAIS_PLATFORM_ACCOUNT_metric
-                if len(parts) > 3:
-                    account = parts[3]
-                    if account not in accounts:
-                        accounts.append(account)
+        if len(parts) > 3:  # RS_PLATFORM_ACCOUNT_metric
+            platform = parts[1]
+            account = parts[2]
+            if account not in accounts:
+                accounts.append(account)
             else:  # RS_ACCOUNT_PLATFORM_metric
                 account = parts[1]
                 if account not in accounts:

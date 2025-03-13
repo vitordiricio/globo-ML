@@ -2,6 +2,7 @@
 import pandas as pd
 import streamlit as st
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 
 
 @st.cache_data
@@ -144,7 +145,7 @@ def tratar_redes_sociais_linear(df):
         var_name="metrica", 
         value_name="valor"
     )
-    df_melted["nova_coluna"] = df_melted["ds_platform"] + "_" + df_melted["metrica"]
+    df_melted["nova_coluna"] = df_melted["ds_platform"] + "_TVGLOBO_" + df_melted["metrica"]
     
     # Pivot e limpeza final
     df_final = df_melted.pivot(
@@ -382,11 +383,11 @@ def merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_li
     df_tv_linear = df_tv_linear.rename(columns=prefix_columns)
     
     # 2. For redes_sociais add RS_ prefix
-    prefix_columns = {col: f'RS_TVGLOBO_{col}' for col in df_redes.columns if col != 'data_hora'}
+    prefix_columns = {col: f'RS_{col}' for col in df_redes.columns if col != 'data_hora'}
     df_redes = df_redes.rename(columns=prefix_columns)
 
-    # 2. For redes_sociais add RS_ prefix
-    prefix_columns = {col: f'RS_CANAIS_{col}' for col in df_redes_sociais_canais.columns if col != 'data_hora'}
+    # 2. For redes_sociais_canais add RS_ prefix
+    prefix_columns = {col: f'RS_{col}' for col in df_redes_sociais_canais.columns if col != 'data_hora'}
     df_redes_sociais_canais = df_redes_sociais_canais.rename(columns=prefix_columns)
     
     # 3. For globoplay add GP_ prefix
@@ -436,6 +437,37 @@ def convert_non_numeric_to_codes(df):
             df_copy[col] = df_copy[col].astype('category').cat.codes
     return df_copy
 
+
+def prepare_features_for_modeling(df, target_column, exclude_cols=None, normalize=True):
+    """
+    Prepara features para modelagem: remove colunas irrelevantes e normaliza usando MinMaxScaler.
+    """
+    if exclude_cols is None:
+        exclude_cols = ['data_hora']  # Sempre excluir data_hora por padrão
+    else:
+        if 'data_hora' not in exclude_cols:
+            exclude_cols.append('data_hora')
+    
+    # Adicionar o target à lista de exclusão
+    if target_column not in exclude_cols:
+        exclude_cols.append(target_column)
+    
+    # Selecionar apenas colunas numéricas que não estão na lista de exclusão
+    numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+    features = [col for col in numeric_cols if col not in exclude_cols]
+    
+    # Criar DataFrame com as features selecionadas
+    X = df[features].copy()
+    y = df[target_column].copy()
+    
+    # Normalizar se solicitado
+    if normalize:
+        scaler = MinMaxScaler()
+        X_scaled = scaler.fit_transform(X)
+        # Converter de volta para DataFrame para manter os nomes das colunas
+        X = pd.DataFrame(X_scaled, columns=X.columns, index=X.index)
+    
+    return X, y
 
 @st.cache_data
 def calculate_correlation_series(df, target):
