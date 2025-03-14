@@ -3,7 +3,7 @@ from datetime import datetime, time
 import requests
 import streamlit as st
 import numpy as np
-from utils.data_processing import fill_hourly_gaps
+from utils.data_processing import fill_hourly_gaps, fill_weekly_gaps
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 
@@ -15,20 +15,45 @@ def join_tweets(tabela_mae):
     """
     tweets = pd.read_csv('tweets_23_24.csv')
 
-    tweets['data_hora'] = pd.to_datetime(tweets['Data'] + ' ' + tweets['Hora'], format='%d/%m/%y %H:%M')
-    tweets['data_hora'] = tweets['data_hora'].dt.round('h')
-    tweets = tweets[(tweets['data_hora'] >= '2023-01-01') & (tweets['data_hora'] < '2025-01-01')]
-    tweets = tweets.groupby('data_hora').size().reset_index(name='EXTERNO_NPS_quantidade_tweets')
+    # Check if tabela_mae is in weekly format
+    is_weekly = 'semana' in tabela_mae.columns and 'ano' in tabela_mae.columns
+    
+    if is_weekly:
+        # For weekly data, we need to aggregate tweets by week
+        tweets['data_hora'] = pd.to_datetime(tweets['Data'] + ' ' + tweets['Hora'], format='%d/%m/%y %H:%M')
+        tweets['data_hora'] = tweets['data_hora'].dt.round('h')
+        tweets = tweets[(tweets['data_hora'] >= '2023-01-01') & (tweets['data_hora'] < '2025-01-01')]
+        
+        # Add year and week columns
+        tweets['ano'] = tweets['data_hora'].dt.year
+        tweets['semana'] = tweets['data_hora'].dt.isocalendar().week
+        
+        # Group by year and week
+        tweets = tweets.groupby(['ano', 'semana']).size().reset_index(name='EXTERNO_NPS_quantidade_tweets')
+        
+        # Merge with tabela_mae using year and week
+        df_merged = pd.merge(
+            tabela_mae,
+            tweets,
+            on=['ano', 'semana'],
+            how='left'  # Using left join to keep all original rows
+        )
+    else:
+        # Original hourly processing
+        tweets['data_hora'] = pd.to_datetime(tweets['Data'] + ' ' + tweets['Hora'], format='%d/%m/%y %H:%M')
+        tweets['data_hora'] = tweets['data_hora'].dt.round('h')
+        tweets = tweets[(tweets['data_hora'] >= '2023-01-01') & (tweets['data_hora'] < '2025-01-01')]
+        tweets = tweets.groupby('data_hora').size().reset_index(name='EXTERNO_NPS_quantidade_tweets')
 
-    tweets = fill_hourly_gaps(tweets, 'data_hora')
+        tweets = fill_hourly_gaps(tweets, 'data_hora')
 
-    # Merge with TV linear data
-    df_merged = pd.merge(
-        tabela_mae,
-        tweets,
-        on='data_hora',
-        how='left'  # Using inner join to keep only common timestamps
-    )
+        # Merge with TV linear data
+        df_merged = pd.merge(
+            tabela_mae,
+            tweets,
+            on='data_hora',
+            how='left'  # Using left join to keep all original rows
+        )
 
     return df_merged
 
@@ -49,9 +74,23 @@ def join_grade_external_data(tabela_mae, eventos=None):
     # Make a copy of the input DataFrame to avoid warnings
     tabela_mae = tabela_mae.copy()
     
-    # Ensure data_hora is datetime type
-    if not pd.api.types.is_datetime64_dtype(tabela_mae['data_hora']):
-        tabela_mae['data_hora'] = pd.to_datetime(tabela_mae['data_hora'])
+    # Check if we're dealing with weekly data
+    is_weekly = 'semana' in tabela_mae.columns and 'ano' in tabela_mae.columns
+    
+    # If weekly data, we'll need to handle merging differently
+    if is_weekly:
+        # For weekly data, we need to ensure we have a date reference column
+        if 'data_hora' not in tabela_mae.columns:
+            st.warning("Para dados semanais, a coluna 'data_hora' é necessária para junção com dados de grade.")
+            return tabela_mae
+        
+        # Ensure data_hora is datetime type
+        if not pd.api.types.is_datetime64_dtype(tabela_mae['data_hora']):
+            tabela_mae['data_hora'] = pd.to_datetime(tabela_mae['data_hora'])
+    else:
+        # For hourly data, ensure data_hora is datetime type
+        if not pd.api.types.is_datetime64_dtype(tabela_mae['data_hora']):
+            tabela_mae['data_hora'] = pd.to_datetime(tabela_mae['data_hora'])
     
     # Helper function to process a TV data file
     def process_tv_file(file_path):
@@ -104,6 +143,13 @@ def join_grade_external_data(tabela_mae, eventos=None):
     if mask.any():
         grade_todas_emissoras.loc[mask, 'data_hora_fim'] = grade_todas_emissoras.loc[mask, 'data_hora_fim'] + pd.Timedelta(days=1)
     
+    # Add week information for weekly data processing
+    if is_weekly:
+        grade_todas_emissoras['ano_inicio'] = grade_todas_emissoras['data_hora_inicio'].dt.year
+        grade_todas_emissoras['semana_inicio'] = grade_todas_emissoras['data_hora_inicio'].dt.isocalendar().week
+        grade_todas_emissoras['ano_fim'] = grade_todas_emissoras['data_hora_fim'].dt.year
+        grade_todas_emissoras['semana_fim'] = grade_todas_emissoras['data_hora_fim'].dt.isocalendar().week
+    
     # Calcular limites de horas (floor/ceiling)
     grade_todas_emissoras['data_hora_inicio_floor'] = grade_todas_emissoras['data_hora_inicio'].dt.floor('h')
     grade_todas_emissoras['data_hora_fim_ceil'] = grade_todas_emissoras['data_hora_fim'].dt.ceil('h')
@@ -115,6 +161,18 @@ def join_grade_external_data(tabela_mae, eventos=None):
     def get_hourly_timestamps(start_time, end_time):
         return pd.date_range(start=start_time, end=end_time - pd.Timedelta(seconds=1), freq='h')
     
+    # Função para obter semanas em um intervalo de datas
+    def get_weeks_in_range(start_time, end_time):
+        weeks = []
+        current = start_time
+        while current <= end_time:
+            year = current.year
+            week = current.isocalendar().week
+            weeks.append((year, week))
+            # Move to next week
+            current += pd.Timedelta(days=7)
+        return weeks
+    
     # Processar tipos de eventos
     if eventos:
         for evento_key, programas in eventos.items():
@@ -125,17 +183,34 @@ def join_grade_external_data(tabela_mae, eventos=None):
             for emissora, emissora_programs in evento_programs.groupby('emissora'):
                 col_name = f"EXTERNO_GRADE_RECORRENTE_{emissora}_{evento_key}_ON"
                 
-                # Obter todos os timestamps para esta combinação evento-emissora
-                event_timestamps = set()
-                for _, programa in emissora_programs.iterrows():
-                    hourly_timestamps = get_hourly_timestamps(
-                        programa['data_hora_inicio_floor'],
-                        programa['data_hora_fim_ceil']
+                if is_weekly:
+                    # For weekly data, collect all year-week combinations when this event occurs
+                    event_weeks = set()
+                    for _, programa in emissora_programs.iterrows():
+                        weeks = get_weeks_in_range(
+                            programa['data_hora_inicio_floor'],
+                            programa['data_hora_fim_ceil']
+                        )
+                        event_weeks.update(weeks)
+                    
+                    # Create boolean mask for tabela_mae
+                    # Each row in tabela_mae represents a week, so we check if that week is in event_weeks
+                    new_columns[col_name] = tabela_mae.apply(
+                        lambda row: 1 if (row['ano'], row['semana']) in event_weeks else 0, 
+                        axis=1
                     )
-                    event_timestamps.update(hourly_timestamps)
-                
-                # Criar máscara booleana para tabela_mae
-                new_columns[col_name] = tabela_mae['data_hora'].isin(event_timestamps).astype(int)
+                else:
+                    # Obter todos os timestamps para esta combinação evento-emissora (hourly data)
+                    event_timestamps = set()
+                    for _, programa in emissora_programs.iterrows():
+                        hourly_timestamps = get_hourly_timestamps(
+                            programa['data_hora_inicio_floor'],
+                            programa['data_hora_fim_ceil']
+                        )
+                        event_timestamps.update(hourly_timestamps)
+                    
+                    # Criar máscara booleana para tabela_mae
+                    new_columns[col_name] = tabela_mae['data_hora'].isin(event_timestamps).astype(int)
     
     # Processar combinações gênero-emissora
     for emissora in grade_todas_emissoras['emissora'].unique():
@@ -155,17 +230,33 @@ def join_grade_external_data(tabela_mae, eventos=None):
                 (grade_todas_emissoras['gênero'] == genero)
             ]
             
-            # Obter todos os timestamps para esta combinação gênero-emissora
-            genre_timestamps = set()
-            for _, programa in filtered_programs.iterrows():
-                hourly_timestamps = get_hourly_timestamps(
-                    programa['data_hora_inicio_floor'],
-                    programa['data_hora_fim_ceil']
+            if is_weekly:
+                # For weekly data, collect all year-week combinations for this genre
+                genre_weeks = set()
+                for _, programa in filtered_programs.iterrows():
+                    weeks = get_weeks_in_range(
+                        programa['data_hora_inicio_floor'],
+                        programa['data_hora_fim_ceil']
+                    )
+                    genre_weeks.update(weeks)
+                
+                # Create boolean mask for tabela_mae
+                new_columns[col_name] = tabela_mae.apply(
+                    lambda row: 1 if (row['ano'], row['semana']) in genre_weeks else 0, 
+                    axis=1
                 )
-                genre_timestamps.update(hourly_timestamps)
-            
-            # Criar máscara booleana para tabela_mae
-            new_columns[col_name] = tabela_mae['data_hora'].isin(genre_timestamps).astype(int)
+            else:
+                # Obter todos os timestamps para esta combinação gênero-emissora (hourly data)
+                genre_timestamps = set()
+                for _, programa in filtered_programs.iterrows():
+                    hourly_timestamps = get_hourly_timestamps(
+                        programa['data_hora_inicio_floor'],
+                        programa['data_hora_fim_ceil']
+                    )
+                    genre_timestamps.update(hourly_timestamps)
+                
+                # Criar máscara booleana para tabela_mae
+                new_columns[col_name] = tabela_mae['data_hora'].isin(genre_timestamps).astype(int)
     
     # Criar um DataFrame com todas as novas colunas de uma vez
     if new_columns:
@@ -180,10 +271,17 @@ def join_grade_external_data(tabela_mae, eventos=None):
 
 
 def join_eventos_externos(tabela_mae):
+    """
+    Joins external events data to the main dataframe.
+    Works with both hourly and weekly data.
+    """
     df_eventos = pd.read_csv('eventos_externos.csv', sep = ";")
 
+    # Check if we're dealing with weekly data
+    is_weekly = 'semana' in tabela_mae.columns and 'ano' in tabela_mae.columns
+    
     # Garantir que data_hora em tabela_mae seja datetime
-    if not pd.api.types.is_datetime64_dtype(tabela_mae['data_hora']):
+    if 'data_hora' in tabela_mae.columns and not pd.api.types.is_datetime64_dtype(tabela_mae['data_hora']):
         tabela_mae['data_hora'] = pd.to_datetime(tabela_mae['data_hora'])
     
     # Funções auxiliares para conversão
@@ -208,60 +306,103 @@ def join_eventos_externos(tabela_mae):
         except:
             return time(0, 0) if tipo == 'inicio' else time(23, 59, 59)
     
-    # Para cada evento no dataframe de eventos
-    for _, evento in df_eventos.iterrows():
-        nome_evento = evento['evento'].strip()
-        nome_coluna = f"EXTERNO_{nome_evento}"
-        tabela_mae[nome_coluna] = 0  # Inicializar com 0
+    # For weekly data, we need a different approach
+    if is_weekly:
+        # Create a deep copy to avoid SettingWithCopyWarning
+        result_df = tabela_mae.copy()
         
-        # Processar dados do evento
-        data_inicio = converter_data(evento['data_inicio'])
-        if data_inicio is None:
-            continue  # Pular evento sem data de início
-        
-        data_fim = converter_data(evento['data_fim'])
-        if data_fim is None:
-            data_fim = pd.Timestamp.max  # Sem fim = infinito
-        
-        hora_inicio = converter_hora(evento['hora_inicio'], 'inicio')
-        hora_fim = converter_hora(evento['hora_fim'], 'fim')
-        atravessa_meia_noite = hora_fim < hora_inicio
-        
-        # Definir a função para verificar se um registro está dentro do evento
-        def esta_no_evento(timestamp):
-            data = timestamp.date()
-            hora = timestamp.time()
+        # For each event in the events dataframe
+        for _, evento in df_eventos.iterrows():
+            nome_evento = evento['evento'].strip()
+            nome_coluna = f"EXTERNO_{nome_evento}"
+            result_df[nome_coluna] = 0  # Initialize with 0
             
-            # Verificar se está dentro do intervalo de datas
-            if data < data_inicio.date() or (data_fim != pd.Timestamp.max and data > data_fim.date()):
+            # Process event data
+            data_inicio = converter_data(evento['data_inicio'])
+            if data_inicio is None:
+                continue  # Skip events without start date
+            
+            data_fim = converter_data(evento['data_fim'])
+            if data_fim is None:
+                data_fim = pd.Timestamp.max  # No end date = infinite
+            
+            # Calculate event weeks
+            data_inicio_dt = pd.to_datetime(data_inicio)
+            data_fim_dt = pd.to_datetime(data_fim)
+            
+            # Get all weeks between start and end dates
+            event_weeks = []
+            current = data_inicio_dt
+            while current <= data_fim_dt and current <= pd.Timestamp.now():
+                event_weeks.append((current.year, current.isocalendar().week))
+                # Move to next week
+                current += pd.Timedelta(days=7)
+            
+            # Mark weeks that fall within the event period
+            for i, row in result_df.iterrows():
+                if (row['ano'], row['semana']) in event_weeks:
+                    result_df.loc[i, nome_coluna] = 1
+        
+        return result_df
+    else:
+        # Original hourly processing
+        # Create a deep copy to avoid SettingWithCopyWarning
+        result_df = tabela_mae.copy()
+        
+        # Para cada evento no dataframe de eventos
+        for _, evento in df_eventos.iterrows():
+            nome_evento = evento['evento'].strip()
+            nome_coluna = f"EXTERNO_{nome_evento}"
+            result_df[nome_coluna] = 0  # Inicializar com 0
+            
+            # Processar dados do evento
+            data_inicio = converter_data(evento['data_inicio'])
+            if data_inicio is None:
+                continue  # Pular evento sem data de início
+            
+            data_fim = converter_data(evento['data_fim'])
+            if data_fim is None:
+                data_fim = pd.Timestamp.max  # Sem fim = infinito
+            
+            hora_inicio = converter_hora(evento['hora_inicio'], 'inicio')
+            hora_fim = converter_hora(evento['hora_fim'], 'fim')
+            atravessa_meia_noite = hora_fim < hora_inicio
+            
+            # Definir a função para verificar se um registro está dentro do evento
+            def esta_no_evento(timestamp):
+                data = timestamp.date()
+                hora = timestamp.time()
+                
+                # Verificar se está dentro do intervalo de datas
+                if data < data_inicio.date() or (data_fim != pd.Timestamp.max and data > data_fim.date()):
+                    return False
+                
+                # Caso 1: Evento normal (não atravessa a meia-noite)
+                if not atravessa_meia_noite:
+                    return hora_inicio <= hora <= hora_fim
+                
+                # Caso 2: Evento que atravessa a meia-noite
+                
+                # Caso 2.1: Primeiro dia do evento
+                if data == data_inicio.date():
+                    return hora >= hora_inicio
+                
+                # Caso 2.2: Último dia do evento (se tiver data_fim)
+                if data_fim != pd.Timestamp.max and data == data_fim.date():
+                    return hora <= hora_fim
+                
+                # Caso 2.3: Dias intermediários ou continuação em evento sem fim
+                if data > data_inicio.date() and (data_fim == pd.Timestamp.max or data < data_fim.date()):
+                    # Em dias intermediários, considerar tanto a continuação da noite anterior
+                    # quanto o início de um novo ciclo do evento
+                    return hora <= hora_fim or hora >= hora_inicio
+                
                 return False
             
-            # Caso 1: Evento normal (não atravessa a meia-noite)
-            if not atravessa_meia_noite:
-                return hora_inicio <= hora <= hora_fim
-            
-            # Caso 2: Evento que atravessa a meia-noite
-            
-            # Caso 2.1: Primeiro dia do evento
-            if data == data_inicio.date():
-                return hora >= hora_inicio
-            
-            # Caso 2.2: Último dia do evento (se tiver data_fim)
-            if data_fim != pd.Timestamp.max and data == data_fim.date():
-                return hora <= hora_fim
-            
-            # Caso 2.3: Dias intermediários ou continuação em evento sem fim
-            if data > data_inicio.date() and (data_fim == pd.Timestamp.max or data < data_fim.date()):
-                # Em dias intermediários, considerar tanto a continuação da noite anterior
-                # quanto o início de um novo ciclo do evento
-                return hora <= hora_fim or hora >= hora_inicio
-            
-            return False
+            # Aplicar a função a cada registro
+            result_df[nome_coluna] = result_df['data_hora'].apply(esta_no_evento).astype(int)
         
-        # Aplicar a função a cada registro
-        tabela_mae[nome_coluna] = tabela_mae['data_hora'].apply(esta_no_evento).astype(int)
-    
-    return tabela_mae
+        return result_df
 
 
 @st.cache_data(ttl=3600)  # Cache por 1 hora
@@ -281,15 +422,19 @@ def fetch_all_bcb_economic_indicators(df=None, date_column='data_hora', start_da
     pandas.DataFrame: DataFrame com indicadores econômicos, opcionalmente mesclado com df
     """
     
+    # Check if we're dealing with weekly data
+    is_weekly = df is not None and 'semana' in df.columns and 'ano' in df.columns
+    
     # Se um dataframe foi fornecido e não foram especificadas datas, usa o min/max do dataframe
     if df is not None and (start_date is None or end_date is None):
-        df[date_column] = pd.to_datetime(df[date_column])
-        
-        if start_date is None:
-            start_date = df[date_column].min()
-        
-        if end_date is None:
-            end_date = df[date_column].max()
+        if date_column in df.columns:
+            df[date_column] = pd.to_datetime(df[date_column])
+            
+            if start_date is None:
+                start_date = df[date_column].min()
+            
+            if end_date is None:
+                end_date = df[date_column].max()
     
     # Se não for fornecida uma data inicial, use 01/01/2022 como padrão
     if start_date is None:
@@ -337,8 +482,21 @@ def fetch_all_bcb_economic_indicators(df=None, date_column='data_hora', start_da
         4394: 'indice_cond_economicas'
     }
     
-    # Se temos um dataframe, usamos suas datas, senão criamos um range de datas
-    if df is not None:
+    # For weekly data, we need to create a DataFrame with unique weeks
+    if is_weekly and df is not None:
+        # Create a DataFrame with unique year-week combinations
+        unique_weeks = df[['ano', 'semana']].drop_duplicates()
+        # Ensure we have a data_hora column to join with indicators
+        if date_column in df.columns:
+            week_dates = df.groupby(['ano', 'semana'])[date_column].first().reset_index()
+            unique_weeks = pd.merge(unique_weeks, week_dates, on=['ano', 'semana'])
+            dados_externos = unique_weeks.copy()
+        else:
+            # If no date_column, we can't join with date-based indicators
+            st.warning("Para indicadores econômicos com dados semanais, a coluna de data é necessária.")
+            return df
+    elif df is not None:
+        # For hourly data, use the standard approach
         # Extrai apenas a parte da data (sem hora) para usar no merge
         df = df.copy()  # Create a copy to avoid SettingWithCopyWarning
         df['data_apenas'] = pd.to_datetime(df[date_column]).dt.date
@@ -394,7 +552,14 @@ def fetch_all_bcb_economic_indicators(df=None, date_column='data_hora', start_da
             temp_df.rename(columns={name: prefixed_name}, inplace=True)
             
             # Mesclar com o dataframe principal
-            dados_externos['year_month'] = dados_externos['data_hora'].dt.to_period('M')
+            if is_weekly:
+                # For weekly data, we need a different approach
+                # Map each week to its month
+                dados_externos['year_month'] = dados_externos[date_column].dt.to_period('M')
+            else:
+                # Standard approach for daily/hourly data
+                dados_externos['year_month'] = dados_externos['data_hora'].dt.to_period('M')
+            
             dados_externos = dados_externos.merge(temp_df[['year_month', prefixed_name]], on='year_month', how='left')
             # Forward fill para valores ausentes
             dados_externos[prefixed_name] = dados_externos[prefixed_name].ffill()
@@ -408,16 +573,25 @@ def fetch_all_bcb_economic_indicators(df=None, date_column='data_hora', start_da
     
     # Se temos um dataframe, fazemos o merge
     if df is not None:
-        # Extraímos apenas a parte da data da coluna data_hora para fazer o merge
-        dados_externos['data_apenas'] = dados_externos['data_hora'].dt.date
-        dados_externos['data_apenas'] = pd.to_datetime(dados_externos['data_apenas'])
-        
-        # Fazemos o merge baseado na data (sem a hora)
-        resultado = df.merge(dados_externos.drop('data_hora', axis=1), 
-                           left_on='data_apenas', right_on='data_apenas', how='inner')
-        
-        # Removemos colunas temporárias
-        resultado = resultado.drop('data_apenas', axis=1)
+        if is_weekly:
+            # For weekly data, join using year and week
+            resultado = pd.merge(
+                df,
+                dados_externos.drop('data_hora', axis=1, errors='ignore'),
+                on=['ano', 'semana'],
+                how='inner'
+            )
+        else:
+            # Extraímos apenas a parte da data da coluna data_hora para fazer o merge
+            dados_externos['data_apenas'] = dados_externos['data_hora'].dt.date
+            dados_externos['data_apenas'] = pd.to_datetime(dados_externos['data_apenas'])
+            
+            # Fazemos o merge baseado na data (sem a hora)
+            resultado = df.merge(dados_externos.drop('data_hora', axis=1), 
+                            left_on='data_apenas', right_on='data_apenas', how='inner')
+            
+            # Removemos colunas temporárias
+            resultado = resultado.drop('data_apenas', axis=1)
         
         return resultado
     else:
@@ -429,11 +603,15 @@ def join_eventos_external_data(tabela_mae):
     """
     Versão otimizada da função join_eventos_external_data que processa
     dados de eventos externos de forma mais eficiente.
+    Supports both hourly and weekly data.
     """
     df_eventos_externos = pd.read_csv('eventos_externos.csv', sep=";")
 
+    # Check if we're dealing with weekly data
+    is_weekly = 'semana' in tabela_mae.columns and 'ano' in tabela_mae.columns
+    
     # Garantir que data_hora em tabela_mae seja datetime
-    if not pd.api.types.is_datetime64_dtype(tabela_mae['data_hora']):
+    if 'data_hora' in tabela_mae.columns and not pd.api.types.is_datetime64_dtype(tabela_mae['data_hora']):
         tabela_mae['data_hora'] = pd.to_datetime(tabela_mae['data_hora'])
     
     # Criar uma cópia para evitar SettingWithCopyWarning
@@ -473,62 +651,91 @@ def join_eventos_external_data(tabela_mae):
     # Definir data final ausente para data máxima
     df_eventos_externos.loc[df_eventos_externos['data_fim'].isna(), 'data_fim'] = pd.Timestamp.max
     
-    # Processar horários
-    def get_hour_from_time(time_str, is_end=False):
-        if pd.isna(time_str) or time_str == '-':
-            return 0 if not is_end else 23
-        if time_str == '00:00' and is_end:
-            return 23
-        try:
-            return int(time_str.split(':')[0])
-        except:
-            return 0 if not is_end else 23
-    
-    df_eventos_externos['hora_inicio_num'] = df_eventos_externos['hora_inicio'].apply(
-        lambda x: get_hour_from_time(x, False))
-    df_eventos_externos['hora_fim_num'] = df_eventos_externos['hora_fim'].apply(
-        lambda x: get_hour_from_time(x, True))
-    
-    # Processar cada evento
-    for _, evento in df_eventos_externos.iterrows():
-        col_name = f"EXTERNO_{evento['evento'].strip()}"
+    if is_weekly:
+        # Weekly data processing
         
-        # Pular eventos sem data de início
-        if pd.isna(evento['data_inicio']):
-            continue
-        
-        start_date = evento['data_inicio']
-        end_date = evento['data_fim']
-        start_hour = evento['hora_inicio_num']
-        end_hour = evento['hora_fim_num']
-        
-        # Verificar se o evento atravessa a meia-noite
-        spans_midnight = end_hour < start_hour
-        
-        # Para cada timestamp em tabela_mae, verificar se está dentro deste evento
-        # Abordagem vetorizada usando máscaras
-        date_mask = (tabela_mae['data_hora'].dt.date >= start_date.date()) & \
-                   ((end_date == pd.Timestamp.max) | (tabela_mae['data_hora'].dt.date <= end_date.date()))
-        
-        if not spans_midnight:
-            # Evento no mesmo dia, não atravessa a meia-noite
-            hour_mask = (tabela_mae['data_hora'].dt.hour >= start_hour) & \
-                        (tabela_mae['data_hora'].dt.hour <= end_hour)
-            final_mask = date_mask & hour_mask
-        else:
-            # Evento atravessa a meia-noite
-            first_day_mask = (tabela_mae['data_hora'].dt.date == start_date.date()) & \
-                            (tabela_mae['data_hora'].dt.hour >= start_hour)
+        # Processar cada evento
+        for _, evento in df_eventos_externos.iterrows():
+            col_name = f"EXTERNO_{evento['evento'].strip()}"
             
-            last_day_mask = ((end_date != pd.Timestamp.max) & \
-                            (tabela_mae['data_hora'].dt.date == end_date.date()) & \
-                            (tabela_mae['data_hora'].dt.hour <= end_hour))
+            # Pular eventos sem data de início
+            if pd.isna(evento['data_inicio']):
+                continue
             
-            middle_days_mask = (tabela_mae['data_hora'].dt.date > start_date.date()) & \
-                              ((end_date == pd.Timestamp.max) | (tabela_mae['data_hora'].dt.date < end_date.date()))
+            start_date = evento['data_inicio']
+            end_date = evento['data_fim']
             
-            final_mask = first_day_mask | last_day_mask | middle_days_mask
+            # Calculate all weeks between start_date and end_date
+            event_weeks = []
+            current = pd.to_datetime(start_date)
+            while current <= pd.to_datetime(end_date) and current <= pd.Timestamp.now():
+                event_weeks.append((current.year, current.isocalendar().week))
+                # Move to next week
+                current += pd.Timedelta(days=7)
+            
+            # Mark weeks that fall within the event period
+            for i, row in tabela_mae.iterrows():
+                if (row['ano'], row['semana']) in event_weeks:
+                    tabela_mae.loc[i, col_name] = 1
+    else:
+        # Hourly data processing
         
-        tabela_mae.loc[final_mask, col_name] = 1
+        # Processar horários
+        def get_hour_from_time(time_str, is_end=False):
+            if pd.isna(time_str) or time_str == '-':
+                return 0 if not is_end else 23
+            if time_str == '00:00' and is_end:
+                return 23
+            try:
+                return int(time_str.split(':')[0])
+            except:
+                return 0 if not is_end else 23
+        
+        df_eventos_externos['hora_inicio_num'] = df_eventos_externos['hora_inicio'].apply(
+            lambda x: get_hour_from_time(x, False))
+        df_eventos_externos['hora_fim_num'] = df_eventos_externos['hora_fim'].apply(
+            lambda x: get_hour_from_time(x, True))
+        
+        # Processar cada evento
+        for _, evento in df_eventos_externos.iterrows():
+            col_name = f"EXTERNO_{evento['evento'].strip()}"
+            
+            # Pular eventos sem data de início
+            if pd.isna(evento['data_inicio']):
+                continue
+            
+            start_date = evento['data_inicio']
+            end_date = evento['data_fim']
+            start_hour = evento['hora_inicio_num']
+            end_hour = evento['hora_fim_num']
+            
+            # Verificar se o evento atravessa a meia-noite
+            spans_midnight = end_hour < start_hour
+            
+            # Para cada timestamp em tabela_mae, verificar se está dentro deste evento
+            # Abordagem vetorizada usando máscaras
+            date_mask = (tabela_mae['data_hora'].dt.date >= start_date.date()) & \
+                    ((end_date == pd.Timestamp.max) | (tabela_mae['data_hora'].dt.date <= end_date.date()))
+            
+            if not spans_midnight:
+                # Evento no mesmo dia, não atravessa a meia-noite
+                hour_mask = (tabela_mae['data_hora'].dt.hour >= start_hour) & \
+                            (tabela_mae['data_hora'].dt.hour <= end_hour)
+                final_mask = date_mask & hour_mask
+            else:
+                # Evento atravessa a meia-noite
+                first_day_mask = (tabela_mae['data_hora'].dt.date == start_date.date()) & \
+                                (tabela_mae['data_hora'].dt.hour >= start_hour)
+                
+                last_day_mask = ((end_date != pd.Timestamp.max) & \
+                                (tabela_mae['data_hora'].dt.date == end_date.date()) & \
+                                (tabela_mae['data_hora'].dt.hour <= end_hour))
+                
+                middle_days_mask = (tabela_mae['data_hora'].dt.date > start_date.date()) & \
+                                ((end_date == pd.Timestamp.max) | (tabela_mae['data_hora'].dt.date < end_date.date()))
+                
+                final_mask = first_day_mask | last_day_mask | middle_days_mask
+            
+            tabela_mae.loc[final_mask, col_name] = 1
     
     return tabela_mae

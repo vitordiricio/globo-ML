@@ -33,17 +33,25 @@ def main():
         unsafe_allow_html=True
     )
     
+    # Initialize granularity in session state if not already set
+    if 'granularidade' not in st.session_state:
+        st.session_state.granularidade = "data_hora"
+    
     # 1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣
     # Menu de navegação na sidebar - Adicionar "Setup" como primeira opção
     menu_options = ["⚙️ SETUP", "1️⃣ TV LINEAR", "2️⃣ TV LINEAR VS CONCORRENTES","3️⃣ GLOBOPLAY", "4️⃣ REDES SOCIAIS", "5️⃣ CRENÇAS", "6️⃣ EXTERNOS", "🛝 PLAYGROUND" ]
     page = st.sidebar.radio("Selecione a página", menu_options)
+    
+    # Display current granularity setting in sidebar
+    granularity_label = "Por Hora" if st.session_state.granularidade == "data_hora" else "Por Semana"
+    st.sidebar.info(f"📊 Análise atual: **{granularity_label}**\n\nAltere na página SETUP")
     
     # Página de Setup
     if page == "⚙️ SETUP":
         setup_page()
     else:
         # Outras páginas usam dados carregados
-        df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear = carregar_e_tratar_dados()
+        df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear, df_tv_linear_semanal = carregar_e_tratar_dados()
 
         # Usar df_merged da session_state se disponível
         if 'df_merged' in st.session_state and st.session_state.df_merged is not None:
@@ -53,28 +61,70 @@ def main():
             df_merged = None
             
             # Create df_merged if all needed dataframes are available
-            if df_redes_sociais is not None and df_redes_sociais_canais is not None and df_globoplay is not None and df_tv_linear is not None:
-                df_merged = merge_data(df_redes_sociais, df_redes_sociais_canais, df_globoplay, df_tv_linear)
+            # The data sources we need depend on the selected granularity
+            granularidade = st.session_state.granularidade
+            
+            if granularidade == "data_hora":
+                # For hourly analysis, we need the regular TV Linear data
+                if df_redes_sociais is not None and df_redes_sociais_canais is not None and df_globoplay is not None and df_tv_linear is not None:
+                    df_merged = merge_data(
+                        df_redes_sociais, 
+                        df_redes_sociais_canais, 
+                        df_globoplay, 
+                        df_tv_linear, 
+                        granularidade="data_hora"
+                    )
+            else:  # "semana"
+                # For weekly analysis, we need the weekly TV Linear data
+                if df_redes_sociais is not None and df_redes_sociais_canais is not None and df_globoplay is not None and df_tv_linear_semanal is not None:
+                    df_merged = merge_data(
+                        df_redes_sociais, 
+                        df_redes_sociais_canais, 
+                        df_globoplay, 
+                        df_tv_linear_semanal, 
+                        granularidade="semana"
+                    )
                 
-                # Apply external data processing only if df_merged was successfully created
-                if df_merged is not None:
+            # Apply external data processing only if df_merged was successfully created
+            if df_merged is not None:
+                if granularidade == "data_hora":
+                    # For hourly data, use original processing
                     max_date = df_merged['data_hora'].max().strftime('%d/%m/%Y')
                     min_date = df_merged['data_hora'].min().strftime('%d/%m/%Y')
                     df_merged = fetch_all_bcb_economic_indicators(df_merged, 'data_hora', min_date, max_date)
-                    eventos = {
-                        'FUTEBOL' : ['FUTEBOL NOT', 'FUTEBOL MAT', 'FUTEBOL VES', 'FUTEBOL MAD'],
-                        'BBB' : ['BIG BROTHER BRASIL'],
-                        'AFAZENDA' : ['A FAZENDA'],
-                        'OLIMPIADAS' : ['JOGOS OLIMPICOS MAT', 'JOGOS OLIMPICOS VES', 'JOGOS OLIMPICOS MAD'],
-                    }
-                    df_merged = join_grade_external_data(df_merged, eventos=eventos)
-                    df_merged = join_tweets(df_merged)
-                    df_merged = join_eventos_externos(df_merged)
-                    df_merged = df_merged.fillna(0)
-                    
-                    # Store in session state
-                    st.session_state.df_merged = df_merged
+                else:
+                    # For weekly data, adapt processing
+                    df_merged = fetch_all_bcb_economic_indicators(df_merged, 'data_hora', None, None)
+                
+                # Apply common external data processing (adapted for both formats in the functions)
+                eventos = {
+                    'FUTEBOL' : ['FUTEBOL NOT', 'FUTEBOL MAT', 'FUTEBOL VES', 'FUTEBOL MAD'],
+                    'BBB' : ['BIG BROTHER BRASIL'],
+                    'AFAZENDA' : ['A FAZENDA'],
+                    'OLIMPIADAS' : ['JOGOS OLIMPICOS MAT', 'JOGOS OLIMPICOS VES', 'JOGOS OLIMPICOS MAD'],
+                }
+                df_merged = join_grade_external_data(df_merged, eventos=eventos)
+                df_merged = join_tweets(df_merged)
+                df_merged = join_eventos_externos(df_merged)
+                df_merged = df_merged.fillna(0)
+                
+                # Store in session state
+                st.session_state.df_merged = df_merged
         
+        # Display granularity alert for all pages except SETUP
+        granularity_info = st.session_state.granularidade
+        if granularity_info == "data_hora":
+            st.warning("""
+            ⚠️ **MODO HORÁRIO:** Os dados estão sendo analisados na granularidade por hora. Os dados do Globoplay 
+            (originalmente diários) foram divididos por 24, o que pode causar inconsistências. 
+            Mude para granularidade semanal na página SETUP se preferir análises mais consistentes.
+            """)
+        else:
+            st.success("""
+            ✅ **MODO SEMANAL:** Os dados estão sendo analisados na granularidade por semana, proporcionando 
+            uma visão mais coerente para análises que combinam fontes com diferentes granularidades originais.
+            """)
+            
         # Página 🛝 PLAYGROUND
         if page == "🛝 PLAYGROUND" :
             playground(df_merged)
